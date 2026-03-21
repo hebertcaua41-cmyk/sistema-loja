@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sistema Loja</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            padding-bottom: 70px;
+        }
+
+        header {
+            background: #2563eb;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 16px;
+            color: #555;
+        }
+
+        .card p {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .money {
+            color: #16a34a;
+        }
+
+        /* 📱 MENU INFERIOR */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -3px 10px rgba(0,0,0,0.1);
+        }
+
+        .bottom-nav a {
+            text-decoration: none;
+            color: #555;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .bottom-nav a.active {
+            color: #2563eb;
+            font-weight: bold;
+        }
+
+        .logout {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            background: red;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<script>
+if (localStorage.getItem("logado") !== "sim") {
+    window.location.href = "login.html";
+}
+</script>
+
+<header>
+    📊 Dashboard
+    <button class="logout" onclick="logout()">Sair</button>
+</header>
+
+<div class="container">
+
+    <div class="card">
+        <h3>📦 Produtos</h3>
+        <p id="totalProdutos">0</p>
+    </div>
+
+    <div class="card">
+        <h3>🛠 OS Totais</h3>
+        <p id="totalOS">0</p>
+    </div>
+
+    <div class="card">
+        <h3>✅ OS Concluídas</h3>
+        <p id="osConcluidas">0</p>
+    </div>
+
+    <div class="card">
+        <h3>💰 Faturamento do Mês</h3>
+        <p class="money" id="faturamentoMes">R$ 0</p>
+    </div>
+
+</div>
+
+<!-- 📱 MENU INFERIOR -->
+<div class="bottom-nav">
+    <a href="index.html">📦<br>Produtos</a>
+    <a href="os.html">🛠<br>OS</a>
+    <a href="dashboard.html" class="active">📊<br>Dashboard</a>
+</div>
+
+<script>
+async function carregarDashboard() {
+
+    const produtos = await fetch('/produtos').then(r => r.json());
+    const os = await fetch('/os').then(r => r.json());
+
+    document.getElementById('totalProdutos').innerText = produtos.length;
+    document.getElementById('totalOS').innerText = os.length;
+
+    const concluidas = os.filter(o => o.status === "Concluído");
+    document.getElementById('osConcluidas').innerText = concluidas.length;
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+
+    const faturamentoMes = os
+        .filter(o => {
+            if (!o.data) return false;
+            const dataOS = new Date(o.data);
+            return dataOS.getMonth() === mesAtual &&
+                   dataOS.getFullYear() === anoAtual &&
+                   o.status === "Concluído";
+        })
+        .reduce((total, item) => {
+            return total + (item.valor || 0);
+        }, 0);
+
+    document.getElementById('faturamentoMes').innerText =
+        "R$ " + faturamentoMes.toFixed(2);
+}
+
+function logout() {
+    localStorage.removeItem("logado");
+    window.location.href = "login.html";
+}
+
+carregarDashboard();
+</script>
+
+</body>
+</html>

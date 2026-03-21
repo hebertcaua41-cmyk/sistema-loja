@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema Loja</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+    margin: 40px auto;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    margin-bottom: 25px;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+}
+
+h2 {
+    margin-top: 0;
+}
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-salvar {
+    background: #28a745;
+    color: white;
+}
+
+.btn-deletar {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-salvar:hover {
+    background: #218838;
+}
+
+.btn-deletar:hover {
+    background: #c82333;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background: #2a5298;
+    color: white;
+}
+</style>
+</head>
+<body>
+
+<h1>🛒 Sistema de Loja</h1>
+
+<div class="container">
+
+<div class="card">
+<h2>📦 Cadastro de Produtos</h2>
+<input type="text" id="nome" placeholder="Nome do produto">
+<input type="number" id="preco" placeholder="Preço">
+<input type="number" id="quantidade" placeholder="Quantidade">
+<button class="btn-salvar" onclick="salvarProduto()">Salvar Produto</button>
+</div>
+
+<div class="card">
+<h2>📋 Lista de Produtos</h2>
+<table>
+<thead>
+<tr>
+<th>Nome</th>
+<th>Preço</th>
+<th>Quantidade</th>
+<th>Ação</th>
+</tr>
+</thead>
+<tbody id="listaProdutos"></tbody>
+</table>
+</div>
+
+</div>
+
+<script>
+async function carregarProdutos() {
+    const resposta = await fetch('/produtos');
+    const produtos = await resposta.json();
+
+    const lista = document.getElementById('listaProdutos');
+    lista.innerHTML = '';
+
+    produtos.forEach(produto => {
+        lista.innerHTML += `
+        <tr>
+            <td>${produto.nome}</td>
+            <td>R$ ${produto.preco}</td>
+            <td>${produto.quantidade}</td>
+            <td>
+                <button class="btn-deletar" onclick="deletarProduto('${produto._id}')">
+                    Excluir
+                </button>
+            </td>
+        </tr>
+        `;
+    });
+}
+
+async function salvarProduto() {
+    const nome = document.getElementById('nome').value;
+    const preco = document.getElementById('preco').value;
+    const quantidade = document.getElementById('quantidade').value;
+
+    await fetch('/produtos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, preco, quantidade })
+    });
+
+    document.getElementById('nome').value = '';
+    document.getElementById('preco').value = '';
+    document.getElementById('quantidade').value = '';
+
+    carregarProdutos();
+}
+
+async function deletarProduto(id) {
+    await fetch('/produtos/' + id, { method: 'DELETE' });
+    carregarProdutos();
+}
+
+carregarProdutos();
+</script>
+
+</body>
+</html>
