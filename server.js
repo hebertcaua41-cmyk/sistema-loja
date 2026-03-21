@@ -4,34 +4,41 @@ const path = require('path');
 
 const app = express();
 
-// 🔥 MIDDLEWARES
+/* ==============================
+   🔥 MIDDLEWARES
+============================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 🔥 SERVIR ARQUIVOS DA PASTA PUBLIC
+/* ==============================
+   📁 ARQUIVOS ESTÁTICOS
+============================== */
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🔥 CONEXÃO MONGODB
-const MONGO_URI = "mongodb://heberts704_db_user:Tina2701@ac-u1kynyo-shard-00-00.8u5vdtw.mongodb.net:27017,ac-u1kynyo-shard-00-01.8u5vdtw.mongodb.net:27017,ac-u1kynyo-shard-00-02.8u5vdtw.mongodb.net:27017/sistemaloja?ssl=true&replicaSet=atlas-2sv9nr-shard-0&authSource=admin&retryWrites=true&w=majority&appName=hs";
+/* ==============================
+   🌍 CONEXÃO MONGODB ATLAS
+============================== */
+
+const MONGO_URI = process.env.MONGO_URI || "COLE_SUA_STRING_DO_MONGODB_AQUI";
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("🔥 Banco conectado com sucesso!"))
-    .catch((err) => console.log("❌ Erro ao conectar:", err));
+    .catch((err) => console.error("❌ Erro ao conectar no MongoDB:", err));
+
 
 /* ==============================
    📦 MODEL PRODUTO
 ============================== */
-
 const Produto = mongoose.model('Produto', {
     nome: String,
     preco: Number,
     quantidade: Number
 });
 
-/* ==============================
-   🛠 MODEL OS
-============================== */
 
+/* ==============================
+   🛠 MODEL ORDEM DE SERVIÇO
+============================== */
 const OS = mongoose.model('OS', {
     cliente: String,
     aparelho: String,
@@ -47,55 +54,96 @@ const OS = mongoose.model('OS', {
     }
 });
 
+
 /* ==============================
    📦 ROTAS PRODUTOS
 ============================== */
 
 app.get('/produtos', async (req, res) => {
-    const produtos = await Produto.find();
-    res.json(produtos);
+    try {
+        const produtos = await Produto.find();
+        res.json(produtos);
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
 app.post('/produtos', async (req, res) => {
-    const novoProduto = new Produto(req.body);
-    await novoProduto.save();
-    res.json({ mensagem: 'Produto salvo com sucesso!' });
+    try {
+        const novoProduto = new Produto(req.body);
+        await novoProduto.save();
+        res.json({ mensagem: "Produto salvo com sucesso!" });
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
 app.delete('/produtos/:id', async (req, res) => {
-    await Produto.findByIdAndDelete(req.params.id);
-    res.json({ mensagem: 'Produto deletado!' });
+    try {
+        await Produto.findByIdAndDelete(req.params.id);
+        res.json({ mensagem: "Produto deletado com sucesso!" });
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
+
 /* ==============================
-   🛠 ROTAS OS
+   🛠 ROTAS ORDEM DE SERVIÇO
 ============================== */
 
 app.get('/os', async (req, res) => {
-    const lista = await OS.find();
-    res.json(lista);
+    try {
+        const lista = await OS.find().sort({ data: -1 });
+        res.json(lista);
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
 app.post('/os', async (req, res) => {
-    const novaOS = new OS(req.body);
-    await novaOS.save();
-    res.json({ mensagem: 'OS criada com sucesso!' });
+    try {
+        const novaOS = new OS(req.body);
+        await novaOS.save();
+        res.json({ mensagem: "OS criada com sucesso!" });
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
 app.put('/os/:id', async (req, res) => {
-    await OS.findByIdAndUpdate(req.params.id, req.body);
-    res.json({ mensagem: 'OS atualizada!' });
+    try {
+        await OS.findByIdAndUpdate(req.params.id, req.body);
+        res.json({ mensagem: "OS atualizada com sucesso!" });
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
 app.delete('/os/:id', async (req, res) => {
-    await OS.findByIdAndDelete(req.params.id);
-    res.json({ mensagem: 'OS deletada!' });
+    try {
+        await OS.findByIdAndDelete(req.params.id);
+        res.json({ mensagem: "OS deletada com sucesso!" });
+    } catch (error) {
+        res.status(500).json({ erro: error.message });
+    }
 });
 
+
 /* ==============================
-   🚀 INICIAR SERVIDOR
+   ❤️ ROTA TESTE (Health Check)
+============================== */
+app.get('/health', (req, res) => {
+    res.send("Servidor online 🚀");
+});
+
+
+/* ==============================
+   🚀 INICIAR SERVIDOR (RENDER)
 ============================== */
 
-app.listen(3000, '0.0.0.0', () => {
-    console.log("🚀 Servidor rodando na porta 3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
