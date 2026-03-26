@@ -1,36 +1,14 @@
 {
-<<<<<<< HEAD
   "name": "sistema-loja",
   "version": "1.0.0",
-  "description": "Sistema de produtos com MongoDB",
-  "main": "server.js",
+  "description": "Sistema de loja",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": "22.x"
+    "start": "node src/server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "mongoose": "^8.0.0"
   }
 }
-=======
-  "name": "sistemalojaweb",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "sqlite3": "^6.0.1"
-  }
-}
->>>>>>> 507238363fc06a1545c375d7f68004ba0bb0f19b
