@@ -79,3 +79,37 @@ app.get("/ordens", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Servidor rodando na porta " + PORT));
+
+// DASHBOARD
+app.get("/dashboard", async (req, res) => {
+  try {
+    const ordens = await Ordem.find();
+
+    const totalOrdens = ordens.length;
+
+    const totalFaturado = ordens.reduce((acc, o) => acc + o.valorServico, 0);
+    const totalCusto = ordens.reduce((acc, o) => acc + o.custoPeca, 0);
+    const lucroTotal = ordens.reduce((acc, o) => acc + o.lucro, 0);
+
+    const mesAtual = new Date().getMonth();
+    const anoAtual = new Date().getFullYear();
+
+    const faturamentoMes = ordens
+      .filter(o => {
+        const data = new Date(o.data);
+        return data.getMonth() === mesAtual && data.getFullYear() === anoAtual;
+      })
+      .reduce((acc, o) => acc + o.valorServico, 0);
+
+    res.json({
+      totalOrdens,
+      totalFaturado,
+      totalCusto,
+      lucroTotal,
+      faturamentoMes
+    });
+
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
+  }
+});
