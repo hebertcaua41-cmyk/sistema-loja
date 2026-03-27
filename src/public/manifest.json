@@ -1,10 +1,10 @@
 {
-  "name": "Sistema Loja",
-  "short_name": "Loja",
-  "start_url": "login.html",
+  "name": "HS CELL IMPORTS",
+  "short_name": "HS CELL",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#2563eb",
-  "theme_color": "#2563eb",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "orientation": "portrait",
   "icons": [
     {
