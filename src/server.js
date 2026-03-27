@@ -26,13 +26,15 @@ mongoose.connect(MONGO_URI)
 /* ===============================
    🔥 MODEL ORDEM DE SERVIÇO
 =================================*/
-const OrdemSchema = new mongoose.Schema({
+onst OrdemSchema = new mongoose.Schema({
   cliente: String,
   telefone: String,
   aparelho: String,
   defeito: String,
   valorServico: Number,
   custoPeca: Number,
+  garantiaDias: Number, // 🔥 NOVO CAMPO
+  dataGarantia: Date,   // 🔥 DATA FINAL GARANTIA
   status: { type: String, default: "Em análise" },
   data: { type: Date, default: Date.now }
 });
@@ -46,9 +48,24 @@ const Ordem = mongoose.model("Ordem", OrdemSchema);
 // Criar ordem
 app.post("/ordens", async (req, res) => {
   try {
-    const nova = new Ordem(req.body);
+    const { garantiaDias } = req.body;
+
+    let dataGarantia = null;
+
+    if (garantiaDias) {
+      const hoje = new Date();
+      dataGarantia = new Date();
+      dataGarantia.setDate(hoje.getDate() + Number(garantiaDias));
+    }
+
+    const nova = new Ordem({
+      ...req.body,
+      dataGarantia
+    });
+
     await nova.save();
     res.status(201).json(nova);
+
   } catch (err) {
     res.status(400).json({ erro: err.message });
   }
