@@ -7,97 +7,75 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-/* ===============================
-   🔥 SERVIR ARQUIVOS ESTÁTICOS
-=================================*/
-const publicPath = path.join(__dirname, "..", "public");
-app.use(express.static(publicPath));
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB conectado"))
+  .catch(err => console.log(err));
 
-/* ===============================
-   🔥 CONEXÃO MONGODB
-=================================*/
-const MONGO_URI = process.env.MONGO_URI;
-
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB conectado"))
-  .catch((err) => console.error("❌ Erro MongoDB:", err));
-
-/* ===============================
-   🔥 MODEL ORDEM DE SERVIÇO
-=================================*/
-onst OrdemSchema = new mongoose.Schema({
+const OrdemSchema = new mongoose.Schema({
   cliente: String,
   telefone: String,
   aparelho: String,
   defeito: String,
   valorServico: Number,
   custoPeca: Number,
-  garantiaDias: Number, // 🔥 NOVO CAMPO
-  dataGarantia: Date,   // 🔥 DATA FINAL GARANTIA
+  lucro: Number,
   status: { type: String, default: "Em análise" },
+  garantiaDias: Number,
+  dataGarantia: Date,
   data: { type: Date, default: Date.now }
 });
 
 const Ordem = mongoose.model("Ordem", OrdemSchema);
 
-/* ===============================
-   🔥 ROTAS API
-=================================*/
-
 // Criar ordem
 app.post("/ordens", async (req, res) => {
   try {
-    const { garantiaDias } = req.body;
+    const {
+      cliente,
+      telefone,
+      aparelho,
+      defeito,
+      valorServico,
+      custoPeca,
+      garantiaDias
+    } = req.body;
+
+    const lucro = valorServico - custoPeca;
 
     let dataGarantia = null;
 
-    if (garantiaDias) {
-      const hoje = new Date();
+    if (garantiaDias && garantiaDias > 0) {
       dataGarantia = new Date();
-      dataGarantia.setDate(hoje.getDate() + Number(garantiaDias));
+      dataGarantia.setDate(dataGarantia.getDate() + garantiaDias);
     }
 
-    const nova = new Ordem({
-      ...req.body,
+    const novaOrdem = new Ordem({
+      cliente,
+      telefone,
+      aparelho,
+      defeito,
+      valorServico,
+      custoPeca,
+      lucro,
+      garantiaDias,
       dataGarantia
     });
 
-    await nova.save();
-    res.status(201).json(nova);
+    await novaOrdem.save();
+    res.status(201).json(novaOrdem);
 
-  } catch (err) {
-    res.status(400).json({ erro: err.message });
+  } catch (error) {
+    res.status(500).json({ erro: error.message });
   }
 });
 
 // Listar ordens
 app.get("/ordens", async (req, res) => {
-  try {
-    const ordens = await Ordem.find().sort({ data: -1 });
-    res.json(ordens);
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
+  const ordens = await Ordem.find().sort({ data: -1 });
+  res.json(ordens);
 });
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "online" });
-});
-
-/* ===============================
-   🔥 FORÇA QUALQUER ROTA ABRIR INDEX
-=================================*/
-app.get("*", (req, res) => {
-  res.sendFile(path.join(publicPath, "index.html"));
-});
-
-/* ===============================
-   🚀 START SERVER
-=================================*/
-const PORT = process.env.PORT || 10000;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Servidor rodando na porta " + PORT));

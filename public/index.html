@@ -2,69 +2,114 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>HS CELL IMPORTS</title>
+<title>Sistema Assistência Técnica</title>
+
 <style>
-body { background:#0f172a; color:white; font-family:Arial; padding:20px }
-h1 { color:#22d3ee }
-.card { background:#1e293b; padding:15px; border-radius:10px; margin-bottom:15px }
-button { padding:8px 12px; border:none; border-radius:6px; cursor:pointer; background:#22d3ee }
-.status { padding:5px 10px; border-radius:6px; font-size:12px }
-input { margin:5px 0; padding:8px; width:100%; border-radius:6px; border:none }
+body {
+  font-family: Arial;
+  background: #f4f4f4;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+form {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+input, button {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+}
+
+.card {
+  background: white;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
 </style>
 </head>
+
 <body>
 
-<h1>📱 HS CELL IMPORTS</h1>
+<h1>📱 Sistema Assistência Técnica</h1>
 
-<div class="card">
-<h3>Nova Ordem de Serviço</h3>
-<input id="cliente" placeholder="Cliente">
-<input id="telefone" placeholder="Telefone">
-<input id="aparelho" placeholder="Aparelho">
-<input id="defeito" placeholder="Defeito">
-<input id="valorServico" placeholder="Valor Serviço">
-<input id="custoPeca" placeholder="Custo Peça">
-<button onclick="criarOrdem()">Salvar</button>
-</div>
+<form id="form">
+<input type="text" id="cliente" placeholder="Cliente" required>
+<input type="text" id="telefone" placeholder="Telefone" required>
+<input type="text" id="aparelho" placeholder="Aparelho" required>
+<input type="text" id="defeito" placeholder="Defeito" required>
+<input type="number" id="valorServico" placeholder="Valor Serviço" required>
+<input type="number" id="custoPeca" placeholder="Custo Peça" required>
+<input type="number" id="garantiaDias" placeholder="Garantia (dias)">
+<button type="submit">Salvar Ordem</button>
+</form>
+
+<button onclick="carregarOrdens()">🔄 Atualizar Lista</button>
 
 <div id="lista"></div>
 
 <script>
-async function carregar() {
-  const res = await fetch("/ordens");
-  const dados = await res.json();
+const API = window.location.origin;
+
+document.getElementById("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const ordem = {
+    cliente: document.getElementById("cliente").value,
+    telefone: document.getElementById("telefone").value,
+    aparelho: document.getElementById("aparelho").value,
+    defeito: document.getElementById("defeito").value,
+    valorServico: Number(document.getElementById("valorServico").value),
+    custoPeca: Number(document.getElementById("custoPeca").value),
+    garantiaDias: Number(document.getElementById("garantiaDias").value)
+  };
+
+  await fetch(`${API}/ordens`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ordem)
+  });
+
+  document.getElementById("form").reset();
+  carregarOrdens();
+});
+
+async function carregarOrdens() {
+  const res = await fetch(`${API}/ordens`);
+  const ordens = await res.json();
+
   const lista = document.getElementById("lista");
   lista.innerHTML = "";
-  dados.forEach(o => {
-    const lucro = o.valorServico - o.custoPeca;
+
+  ordens.forEach(ordem => {
+
+    const garantia = ordem.dataGarantia
+      ? new Date(ordem.dataGarantia).toLocaleDateString()
+      : "Sem garantia";
+
     lista.innerHTML += `
       <div class="card">
-        <b>${o.cliente}</b> - ${o.aparelho}<br>
-        Defeito: ${o.defeito}<br>
-        Valor: R$ ${o.valorServico} | Lucro: R$ ${lucro}<br>
-        Status: ${o.status}
+        <strong>${ordem.cliente}</strong><br>
+        📱 ${ordem.aparelho}<br>
+        🔧 ${ordem.defeito}<br>
+        💰 Lucro: R$ ${ordem.lucro}<br>
+        🛡 Garantia até: ${garantia}<br>
+        📌 Status: ${ordem.status}
       </div>
     `;
   });
 }
 
-async function criarOrdem() {
-  await fetch("/ordens", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      cliente: cliente.value,
-      telefone: telefone.value,
-      aparelho: aparelho.value,
-      defeito: defeito.value,
-      valorServico: Number(valorServico.value),
-      custoPeca: Number(custoPeca.value)
-    })
-  });
-  carregar();
-}
-
-carregar();
+carregarOrdens();
 </script>
 
 </body>
