@@ -1,7 +1,7 @@
 {
-  "name": "hs-cell-imports",
+  "name": "sistema-loja",
   "version": "1.0.0",
-  "description": "Sistema HS CELL IMPORTS",
+  "description": "Sistema de Assistência Técnica",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js"

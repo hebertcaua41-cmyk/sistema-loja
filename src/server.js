@@ -8,22 +8,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔥 SERVE ARQUIVOS ESTÁTICOS (public dentro de src)
-app.use(express.static(path.join(__dirname, "public")));
+// 🔥 SERVIR PASTA PUBLIC (fora do src)
+app.use(express.static(path.join(__dirname, "..", "public")));
 
-// 🔥 ROTA RAIZ
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
 });
 
-// 🔥 CONEXÃO MONGODB
+// 🔥 CONEXÃO MONGO
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB conectado"))
   .catch((err) => console.error("❌ Erro MongoDB:", err));
 
-// 🔥 MODEL ORDEM DE SERVIÇO
+// 🔥 MODEL
 const OrdemSchema = new mongoose.Schema({
   cliente: String,
   telefone: String,
@@ -37,7 +36,7 @@ const OrdemSchema = new mongoose.Schema({
 
 const Ordem = mongoose.model("Ordem", OrdemSchema);
 
-// 🔥 CRIAR ORDEM
+// 🔥 ROTAS
 app.post("/ordens", async (req, res) => {
   try {
     const nova = new Ordem(req.body);
@@ -48,7 +47,6 @@ app.post("/ordens", async (req, res) => {
   }
 });
 
-// 🔥 LISTAR ORDENS
 app.get("/ordens", async (req, res) => {
   try {
     const ordens = await Ordem.find().sort({ data: -1 });
@@ -58,7 +56,6 @@ app.get("/ordens", async (req, res) => {
   }
 });
 
-// 🔥 HEALTH CHECK
 app.get("/health", (req, res) => {
   res.json({ status: "online" });
 });
