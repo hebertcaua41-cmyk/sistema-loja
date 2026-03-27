@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>HS CELL IMPORTS - Sistema</title>
+<title>HS CELL IMPORTS</title>
 
 <style>
 body {
@@ -12,16 +12,16 @@ body {
   padding: 20px;
 }
 
-h1 { text-align: center; }
+h1, h2 { text-align: center; }
 
-form, .card {
+.card {
   background: #1e1e1e;
   padding: 15px;
   border-radius: 10px;
-  margin-bottom: 15px;
+  margin: 10px 0;
 }
 
-input, button {
+input, button, select {
   width: 100%;
   padding: 8px;
   margin: 5px 0;
@@ -35,9 +35,7 @@ button {
   cursor: pointer;
 }
 
-button:hover {
-  opacity: 0.8;
-}
+button:hover { opacity: 0.8; }
 </style>
 </head>
 
@@ -48,113 +46,8 @@ button:hover {
 <h2>📊 Dashboard</h2>
 <div id="dashboard"></div>
 
-<h2>➕ Nova Ordem</h2>
-<form id="form">
-<input type="text" id="cliente" placeholder="Cliente" required>
-<input type="text" id="telefone" placeholder="Telefone" required>
-<input type="text" id="aparelho" placeholder="Aparelho" required>
-<input type="text" id="defeito" placeholder="Defeito" required>
-<input type="number" id="valorServico" placeholder="Valor Serviço" required>
-<input type="number" id="custoPeca" placeholder="Custo Peça" required>
-<input type="number" id="garantiaDias" placeholder="Garantia (dias)">
-<button type="submit">Salvar Ordem</button>
-</form>
-
-<h2>📦 Ordens</h2>
-<div id="lista"></div>
-
-<script>
-const API = window.location.origin;
-
-document.getElementById("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const ordem = {
-    cliente: cliente.value,
-    telefone: telefone.value,
-    aparelho: aparelho.value,
-    defeito: defeito.value,
-    valorServico: Number(valorServico.value),
-    custoPeca: Number(custoPeca.value),
-    garantiaDias: Number(garantiaDias.value)
-  };
-
-  await fetch(`${API}/ordens`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(ordem)
-  });
-
-  form.reset();
-  carregarOrdens();
-  carregarDashboard();
-});
-
-async function carregarOrdens() {
-  const res = await fetch(`${API}/ordens`);
-  const ordens = await res.json();
-
-  lista.innerHTML = "";
-
-  ordens.forEach(ordem => {
-    lista.innerHTML += `
-      <div class="card">
-        <strong>${ordem.cliente}</strong><br>
-        📱 ${ordem.aparelho}<br>
-        💰 R$ ${ordem.valorServico}<br>
-        📈 Lucro: R$ ${ordem.lucro}<br>
-        🛡 Garantia: ${ordem.dataGarantia ? new Date(ordem.dataGarantia).toLocaleDateString() : "Sem garantia"}<br>
-        <button onclick="editar('${ordem._id}')">✏ Editar</button>
-      </div>
-    `;
-  });
-}
-
-async function editar(id) {
-  const novoValor = prompt("Novo valor do serviço:");
-  const novoCusto = prompt("Novo custo da peça:");
-  const novaGarantia = prompt("Garantia em dias:");
-
-  await fetch(`${API}/ordens/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      valorServico: Number(novoValor),
-      custoPeca: Number(novoCusto),
-      garantiaDias: Number(novaGarantia)
-    })
-  });
-
-  carregarOrdens();
-  carregarDashboard();
-}
-
-async function carregarDashboard() {
-  const res = await fetch(`${API}/dashboard`);
-  const dados = await res.json();
-
-  dashboard.innerHTML = `
-    <div class="card">
-      🎯 Meta: R$ ${dados.metaMensal}<br>
-      💰 Faturamento Mês: R$ ${dados.faturamentoMes}<br>
-      📊 Progresso: ${dados.progressoMeta}%<br>
-      📈 Lucro Total: R$ ${dados.lucroTotal}
-
-      <div style="background:#333;height:20px;border-radius:10px;margin-top:10px;">
-        <div style="
-          background:#00c853;
-          width:${dados.progressoMeta}%;
-          height:100%;
-          border-radius:10px;">
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-carregarOrdens();
-carregarDashboard();
-</script>
-
-</body>
-</html>
+<h2>📦 Estoque</h2>
+<input id="nomePeca" placeholder="Nome da peça">
+<input id="quantidadePecaEstoque" type="number" placeholder="Quantidade">
+<input id="custoUnitario" type="number" placeholder="Custo unitário">
+<button onclick="
