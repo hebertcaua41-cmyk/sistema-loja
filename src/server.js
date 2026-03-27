@@ -46,13 +46,11 @@ const Ordem = mongoose.model("Ordem", OrdemSchema);
 
 /* ================= ESTOQUE ================= */
 
-// cadastrar peça
 app.post("/estoque", async (req, res) => {
   const nova = await Estoque.create(req.body);
   res.json(nova);
 });
 
-// listar estoque
 app.get("/estoque", async (req, res) => {
   const lista = await Estoque.find();
   res.json(lista);
@@ -87,7 +85,7 @@ app.post("/ordens", async (req, res) => {
 
     let custoPeca = 0;
 
-    if (pecaUsada) {
+    if (pecaUsada && quantidadePeca > 0) {
       const peca = await Estoque.findOne({ nome: pecaUsada });
 
       if (!peca || peca.quantidade < quantidadePeca) {
@@ -95,8 +93,6 @@ app.post("/ordens", async (req, res) => {
       }
 
       custoPeca = peca.custoUnitario * quantidadePeca;
-
-      // baixa no estoque
       peca.quantidade -= quantidadePeca;
       await peca.save();
     }
@@ -138,6 +134,7 @@ app.get("/ordens", async (req, res) => {
 /* ================= DASHBOARD ================= */
 
 app.get("/dashboard", async (req, res) => {
+
   const ordens = await Ordem.find();
   const despesas = await Despesa.find();
 
@@ -171,4 +168,9 @@ app.get("/dashboard", async (req, res) => {
 
 /* ================= SERVIDOR ================= */
 
-app.get("*",
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("🚀 Rodando na porta " + PORT));
