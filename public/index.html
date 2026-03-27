@@ -2,46 +2,53 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Sistema Assistência Técnica</title>
+<title>HS CELL IMPORTS - Sistema</title>
 
 <style>
 body {
   font-family: Arial;
-  background: #f4f4f4;
+  background: #121212;
+  color: white;
   padding: 20px;
 }
 
-h1 {
-  text-align: center;
-}
+h1 { text-align: center; }
 
-form {
-  background: white;
+form, .card {
+  background: #1e1e1e;
   padding: 15px;
   border-radius: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 input, button {
   width: 100%;
   padding: 8px;
   margin: 5px 0;
+  border-radius: 5px;
+  border: none;
 }
 
-.card {
-  background: white;
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+button {
+  background: #00c853;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.8;
 }
 </style>
 </head>
 
 <body>
 
-<h1>📱 Sistema Assistência Técnica</h1>
+<h1>📱 HS CELL IMPORTS</h1>
 
+<h2>📊 Dashboard</h2>
+<div id="dashboard"></div>
+
+<h2>➕ Nova Ordem</h2>
 <form id="form">
 <input type="text" id="cliente" placeholder="Cliente" required>
 <input type="text" id="telefone" placeholder="Telefone" required>
@@ -53,8 +60,7 @@ input, button {
 <button type="submit">Salvar Ordem</button>
 </form>
 
-<button onclick="carregarOrdens()">🔄 Atualizar Lista</button>
-
+<h2>📦 Ordens</h2>
 <div id="lista"></div>
 
 <script>
@@ -64,13 +70,13 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const ordem = {
-    cliente: document.getElementById("cliente").value,
-    telefone: document.getElementById("telefone").value,
-    aparelho: document.getElementById("aparelho").value,
-    defeito: document.getElementById("defeito").value,
-    valorServico: Number(document.getElementById("valorServico").value),
-    custoPeca: Number(document.getElementById("custoPeca").value),
-    garantiaDias: Number(document.getElementById("garantiaDias").value)
+    cliente: cliente.value,
+    telefone: telefone.value,
+    aparelho: aparelho.value,
+    defeito: defeito.value,
+    valorServico: Number(valorServico.value),
+    custoPeca: Number(custoPeca.value),
+    garantiaDias: Number(garantiaDias.value)
   };
 
   await fetch(`${API}/ordens`, {
@@ -79,37 +85,75 @@ document.getElementById("form").addEventListener("submit", async (e) => {
     body: JSON.stringify(ordem)
   });
 
-  document.getElementById("form").reset();
+  form.reset();
   carregarOrdens();
+  carregarDashboard();
 });
 
 async function carregarOrdens() {
   const res = await fetch(`${API}/ordens`);
   const ordens = await res.json();
 
-  const lista = document.getElementById("lista");
   lista.innerHTML = "";
 
   ordens.forEach(ordem => {
-
-    const garantia = ordem.dataGarantia
-      ? new Date(ordem.dataGarantia).toLocaleDateString()
-      : "Sem garantia";
-
     lista.innerHTML += `
       <div class="card">
         <strong>${ordem.cliente}</strong><br>
         📱 ${ordem.aparelho}<br>
-        🔧 ${ordem.defeito}<br>
-        💰 Lucro: R$ ${ordem.lucro}<br>
-        🛡 Garantia até: ${garantia}<br>
-        📌 Status: ${ordem.status}
+        💰 R$ ${ordem.valorServico}<br>
+        📈 Lucro: R$ ${ordem.lucro}<br>
+        🛡 Garantia: ${ordem.dataGarantia ? new Date(ordem.dataGarantia).toLocaleDateString() : "Sem garantia"}<br>
+        <button onclick="editar('${ordem._id}')">✏ Editar</button>
       </div>
     `;
   });
 }
 
+async function editar(id) {
+  const novoValor = prompt("Novo valor do serviço:");
+  const novoCusto = prompt("Novo custo da peça:");
+  const novaGarantia = prompt("Garantia em dias:");
+
+  await fetch(`${API}/ordens/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      valorServico: Number(novoValor),
+      custoPeca: Number(novoCusto),
+      garantiaDias: Number(novaGarantia)
+    })
+  });
+
+  carregarOrdens();
+  carregarDashboard();
+}
+
+async function carregarDashboard() {
+  const res = await fetch(`${API}/dashboard`);
+  const dados = await res.json();
+
+  dashboard.innerHTML = `
+    <div class="card">
+      🎯 Meta: R$ ${dados.metaMensal}<br>
+      💰 Faturamento Mês: R$ ${dados.faturamentoMes}<br>
+      📊 Progresso: ${dados.progressoMeta}%<br>
+      📈 Lucro Total: R$ ${dados.lucroTotal}
+
+      <div style="background:#333;height:20px;border-radius:10px;margin-top:10px;">
+        <div style="
+          background:#00c853;
+          width:${dados.progressoMeta}%;
+          height:100%;
+          border-radius:10px;">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 carregarOrdens();
+carregarDashboard();
 </script>
 
 </body>
