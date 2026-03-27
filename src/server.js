@@ -14,18 +14,18 @@ mongoose.connect(process.env.MONGO_URI)
 
 /* ================= MODELS ================= */
 
-const EstoqueSchema = new mongoose.Schema({
+const Estoque = mongoose.model("Estoque", {
   nome: String,
   quantidade: Number,
   custoUnitario: Number
 });
 
-const DespesaSchema = new mongoose.Schema({
+const Despesa = mongoose.model("Despesa", {
   nome: String,
   valor: Number
 });
 
-const OrdemSchema = new mongoose.Schema({
+const Ordem = mongoose.model("Ordem", {
   cliente: String,
   telefone: String,
   aparelho: String,
@@ -40,9 +40,14 @@ const OrdemSchema = new mongoose.Schema({
   data: { type: Date, default: Date.now }
 });
 
-const Estoque = mongoose.model("Estoque", EstoqueSchema);
-const Despesa = mongoose.model("Despesa", DespesaSchema);
-const Ordem = mongoose.model("Ordem", OrdemSchema);
+const Venda = mongoose.model("Venda", {
+  cliente: String,
+  produto: String,
+  quantidade: Number,
+  valorUnitario: Number,
+  total: Number,
+  data: { type: Date, default: Date.now }
+});
 
 /* ================= ESTOQUE ================= */
 
@@ -52,20 +57,17 @@ app.post("/estoque", async (req, res) => {
 });
 
 app.get("/estoque", async (req, res) => {
-  const lista = await Estoque.find();
-  res.json(lista);
+  res.json(await Estoque.find());
 });
 
 /* ================= DESPESAS ================= */
 
 app.post("/despesas", async (req, res) => {
-  const nova = await Despesa.create(req.body);
-  res.json(nova);
+  res.json(await Despesa.create(req.body));
 });
 
 app.get("/despesas", async (req, res) => {
-  const lista = await Despesa.find();
-  res.json(lista);
+  res.json(await Despesa.find());
 });
 
 /* ================= ORDEM ================= */
@@ -73,14 +75,9 @@ app.get("/despesas", async (req, res) => {
 app.post("/ordens", async (req, res) => {
   try {
     const {
-      cliente,
-      telefone,
-      aparelho,
-      defeito,
-      pecaUsada,
-      quantidadePeca,
-      valorServico,
-      garantiaDias
+      cliente, telefone, aparelho, defeito,
+      pecaUsada, quantidadePeca,
+      valorServico, garantiaDias
     } = req.body;
 
     let custoPeca = 0;
@@ -106,29 +103,53 @@ app.post("/ordens", async (req, res) => {
     }
 
     const nova = await Ordem.create({
-      cliente,
-      telefone,
-      aparelho,
-      defeito,
-      pecaUsada,
-      quantidadePeca,
-      valorServico,
-      custoPeca,
-      lucro,
-      garantiaDias,
-      dataGarantia
+      cliente, telefone, aparelho, defeito,
+      pecaUsada, quantidadePeca,
+      valorServico, custoPeca, lucro,
+      garantiaDias, dataGarantia
     });
 
     res.json(nova);
 
-  } catch (error) {
-    res.status(500).json({ erro: error.message });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
   }
 });
 
 app.get("/ordens", async (req, res) => {
-  const lista = await Ordem.find().sort({ data: -1 });
-  res.json(lista);
+  res.json(await Ordem.find().sort({ data: -1 }));
+});
+
+/* ================= VENDAS ================= */
+
+app.post("/vendas", async (req, res) => {
+  try {
+    const { cliente, produto, quantidade, valorUnitario } = req.body;
+
+    const item = await Estoque.findOne({ nome: produto });
+
+    if (!item || item.quantidade < quantidade) {
+      return res.status(400).json({ erro: "Estoque insuficiente" });
+    }
+
+    item.quantidade -= quantidade;
+    await item.save();
+
+    const total = quantidade * valorUnitario;
+
+    const nova = await Venda.create({
+      cliente, produto, quantidade, valorUnitario, total
+    });
+
+    res.json(nova);
+
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get("/vendas", async (req, res) => {
+  res.json(await Venda.find().sort({ data: -1 }));
 });
 
 /* ================= DASHBOARD ================= */
@@ -137,18 +158,20 @@ app.get("/dashboard", async (req, res) => {
 
   const ordens = await Ordem.find();
   const despesas = await Despesa.find();
+  const vendas = await Venda.find();
 
   const metaMensal = 5000;
 
   const mesAtual = new Date().getMonth();
   const anoAtual = new Date().getFullYear();
 
-  const faturamentoMes = ordens
-    .filter(o => {
-      const data = new Date(o.data);
-      return data.getMonth() === mesAtual && data.getFullYear() === anoAtual;
-    })
-    .reduce((acc, o) => acc + o.valorServico, 0);
+  const faturamentoMes =
+    [...ordens, ...vendas]
+      .filter(o => {
+        const data = new Date(o.data);
+        return data.getMonth() === mesAtual && data.getFullYear() === anoAtual;
+      })
+      .reduce((acc, o) => acc + (o.valorServico || o.total), 0);
 
   const lucroBruto = ordens.reduce((acc, o) => acc + o.lucro, 0);
   const totalDespesas = despesas.reduce((acc, d) => acc + d.valor, 0);
@@ -166,11 +189,9 @@ app.get("/dashboard", async (req, res) => {
   });
 });
 
-/* ================= SERVIDOR ================= */
-
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("🚀 Rodando na porta " + PORT));
+app.listen(PORT, () => console.log("🚀 Servidor rodando na porta " + PORT));

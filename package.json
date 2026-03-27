@@ -1,5 +1,5 @@
 {
-  "name": "hs-cell-imports",
+  "name": "sistema-loja",
   "version": "1.0.0",
   "main": "src/server.js",
   "scripts": {

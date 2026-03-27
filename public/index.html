@@ -1,53 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>HS CELL IMPORTS</title>
+<title>HS CELL IMPORTS - Sistema</title>
 
 <style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:Arial; }
+
 body {
-  font-family: Arial;
-  background: #121212;
-  color: white;
-  padding: 20px;
+  background:#0f172a;
+  color:white;
+  padding:20px;
 }
 
-h1, h2 { text-align: center; }
+h1 {
+  text-align:center;
+  margin-bottom:20px;
+  color:#38bdf8;
+}
+
+.container {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px,1fr));
+  gap:20px;
+}
 
 .card {
-  background: #1e1e1e;
-  padding: 15px;
-  border-radius: 10px;
-  margin: 10px 0;
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  box-shadow:0 0 15px rgba(0,0,0,0.4);
+}
+
+.card h2 {
+  margin-bottom:15px;
+  color:#38bdf8;
 }
 
 input, button, select {
-  width: 100%;
-  padding: 8px;
-  margin: 5px 0;
-  border-radius: 5px;
-  border: none;
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border:none;
+  border-radius:8px;
+}
+
+input, select {
+  background:#334155;
+  color:white;
 }
 
 button {
-  background: #00c853;
-  color: white;
-  cursor: pointer;
+  background:#22c55e;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+  transition:0.2s;
 }
 
-button:hover { opacity: 0.8; }
-</style>
-</head>
+button:hover {
+  opacity:0.85;
+}
 
-<body>
-
-<h1>📱 HS CELL IMPORTS</h1>
-
-<h2>📊 Dashboard</h2>
-<div id="dashboard"></div>
-
-<h2>📦 Estoque</h2>
-<input id="nomePeca" placeholder="Nome da peça">
-<input id="quantidadePecaEstoque" type="number" placeholder="Quantidade">
-<input id="custoUnitario" type="number" placeholder="Custo unitário">
-<button onclick="
+.list-item {
+  background:#334155;
+  padding:10px;
