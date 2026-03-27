@@ -8,8 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Servir arquivos do painel
+// 👇 SERVE A PASTA PUBLIC
 app.use(express.static(path.join(__dirname, "../public")));
+
+// 👇 FORÇA ABRIR index.html NA RAIZ
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
 
 const MONGO_URI = process.env.MONGO_URI;
 
@@ -17,7 +22,7 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB conectado"))
   .catch(err => console.error("❌ Erro MongoDB:", err));
 
-// Modelo Ordem de Serviço
+// Modelo
 const OrdemSchema = new mongoose.Schema({
   cliente: String,
   telefone: String,
@@ -31,7 +36,7 @@ const OrdemSchema = new mongoose.Schema({
 
 const Ordem = mongoose.model("Ordem", OrdemSchema);
 
-// Criar OS
+// Criar
 app.post("/ordens", async (req, res) => {
   try {
     const nova = new Ordem(req.body);
@@ -42,27 +47,13 @@ app.post("/ordens", async (req, res) => {
   }
 });
 
-// Listar OS
+// Listar
 app.get("/ordens", async (req, res) => {
   const ordens = await Ordem.find().sort({ data: -1 });
   res.json(ordens);
 });
 
-// Atualizar Status
-app.put("/ordens/:id", async (req, res) => {
-  try {
-    const ordem = await Ordem.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true }
-    );
-    res.json(ordem);
-  } catch (err) {
-    res.status(400).json({ erro: err.message });
-  }
-});
-
-// Health check
+// Health
 app.get("/health", (req, res) => {
   res.json({ status: "online" });
 });
