@@ -8,21 +8,24 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔥 SERVIR PASTA PUBLIC (fora do src)
-app.use(express.static(path.join(__dirname, "..", "public")));
+/* ===============================
+   🔥 SERVIR ARQUIVOS ESTÁTICOS
+=================================*/
+const publicPath = path.join(__dirname, "..", "public");
+app.use(express.static(publicPath));
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "public", "index.html"));
-});
-
-// 🔥 CONEXÃO MONGO
+/* ===============================
+   🔥 CONEXÃO MONGODB
+=================================*/
 const MONGO_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB conectado"))
   .catch((err) => console.error("❌ Erro MongoDB:", err));
 
-// 🔥 MODEL
+/* ===============================
+   🔥 MODEL ORDEM DE SERVIÇO
+=================================*/
 const OrdemSchema = new mongoose.Schema({
   cliente: String,
   telefone: String,
@@ -36,7 +39,11 @@ const OrdemSchema = new mongoose.Schema({
 
 const Ordem = mongoose.model("Ordem", OrdemSchema);
 
-// 🔥 ROTAS
+/* ===============================
+   🔥 ROTAS API
+=================================*/
+
+// Criar ordem
 app.post("/ordens", async (req, res) => {
   try {
     const nova = new Ordem(req.body);
@@ -47,6 +54,7 @@ app.post("/ordens", async (req, res) => {
   }
 });
 
+// Listar ordens
 app.get("/ordens", async (req, res) => {
   try {
     const ordens = await Ordem.find().sort({ data: -1 });
@@ -56,10 +64,21 @@ app.get("/ordens", async (req, res) => {
   }
 });
 
+// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "online" });
 });
 
+/* ===============================
+   🔥 FORÇA QUALQUER ROTA ABRIR INDEX
+=================================*/
+app.get("*", (req, res) => {
+  res.sendFile(path.join(publicPath, "index.html"));
+});
+
+/* ===============================
+   🚀 START SERVER
+=================================*/
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, () => {
