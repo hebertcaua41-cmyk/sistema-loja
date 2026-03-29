@@ -5,137 +5,102 @@ const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const path = require("path");
 
-const app = express();
+const Usuario = require("./models/Usuario");
+const OS = require("./models/OS");
+const Produto = require("./models/Produto");
+const Despesa = require("./models/Despesa");
+const Venda = require("./models/Venda");
+const auth = require("./middleware/auth");
 
+const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "../public")));
 
-
-// =============================
-// CONEXÃO MONGODB
-// =============================
-
 mongoose.connect(process.env.MONGO_URI)
 .then(async () => {
-  console.log("✅ MongoDB conectado");
-  await criarAdminPadrao();
-})
-.catch(err => console.log("❌ Erro Mongo:", err));
-
-
-// =============================
-// MODELO USUÁRIO
-// =============================
-
-const UsuarioSchema = new mongoose.Schema({
-  usuario: { type: String, unique: true },
-  senha: String,
-  nivel: String
+  console.log("Mongo conectado");
+  await criarAdmin();
 });
 
-const Usuario = mongoose.model("Usuario", UsuarioSchema);
-
-
-// =============================
-// CRIAR ADMIN AUTOMÁTICO
-// =============================
-
-async function criarAdminPadrao() {
-  try {
-    const existe = await Usuario.findOne({ usuario: "admin" });
-
-    if (!existe) {
-      const senhaHash = await bcrypt.hash("123456", 10);
-
-      await Usuario.create({
-        usuario: "admin",
-        senha: senhaHash,
-        nivel: "admin"
-      });
-
-      console.log("🔥 Admin criado: admin / 123456");
-    } else {
-      console.log("ℹ Admin já existe");
-    }
-  } catch (err) {
-    console.log("Erro ao criar admin:", err);
+async function criarAdmin() {
+  const existe = await Usuario.findOne({ usuario: "admin" });
+  if (!existe) {
+    const hash = await bcrypt.hash("123456", 10);
+    await Usuario.create({ usuario: "admin", senha: hash, nivel: "admin" });
+    console.log("Admin criado");
   }
 }
 
-
-// =============================
 // LOGIN
-// =============================
-
 app.post("/login", async (req, res) => {
-  try {
-    const { usuario, senha } = req.body;
-
-    if (!usuario || !senha) {
-      return res.status(400).json({ erro: "Preencha usuário e senha" });
-    }
-
-    const user = await Usuario.findOne({ usuario });
-
-    if (!user) {
-      return res.status(400).json({ erro: "Usuário não encontrado" });
-    }
-
-    const senhaValida = await bcrypt.compare(senha, user.senha);
-
-    if (!senhaValida) {
-      return res.status(400).json({ erro: "Senha inválida" });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, nivel: user.nivel },
-      "segredo_super",
-      { expiresIn: "8h" }
-    );
-
-    res.json({ mensagem: "Login realizado", token });
-
-  } catch (err) {
-    res.status(500).json({ erro: "Erro interno no servidor" });
-  }
-});
-
-
-// =============================
-// RECUPERAR
-// =============================
-
-app.post("/recuperar", async (req, res) => {
-  const { usuario } = req.body;
-
+  const { usuario, senha } = req.body;
   const user = await Usuario.findOne({ usuario });
+  if (!user) return res.status(400).json({ erro: "Usuário não encontrado" });
 
-  if (!user) {
-    return res.status(404).json({ erro: "Usuário não encontrado" });
-  }
+  const valido = await bcrypt.compare(senha, user.senha);
+  if (!valido) return res.status(400).json({ erro: "Senha inválida" });
 
-  res.json({
-    mensagem: "Procure o administrador para redefinir sua senha."
-  });
+  const token = jwt.sign({ id: user._id, nivel: user.nivel }, "segredo_super");
+  res.json({ token });
 });
 
-
-// =============================
-// ROTA PRINCIPAL
-// =============================
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
+// ================= OS =================
+app.post("/os", auth, async (req, res) => {
+  const nova = await OS.create(req.body);
+  res.json(nova);
 });
 
+app.get("/os", auth, async (req, res) => {
+  const lista = await OS.find();
+  res.json(lista);
+});
 
-// =============================
-// SERVIDOR (CORRETO PARA RENDER)
-// =============================
+app.put("/os/:id", auth, async (req, res) => {
+  const atualizar = await OS.findByIdAndUpdate(req.params.id, req.body);
+  res.json(atualizar);
+});
+
+app.delete("/os/:id", auth, async (req, res) => {
+  await OS.findByIdAndDelete(req.params.id);
+  res.json({ ok: true });
+});
+
+// ================= ESTOQUE =================
+app.post("/produto", auth, async (req, res) => {
+  const novo = await Produto.create(req.body);
+  res.json(novo);
+});
+
+app.get("/produto", auth, async (req, res) => {
+  const lista = await Produto.find();
+  res.json(lista);
+});
+
+// ================= DESPESAS =================
+app.post("/despesa", auth, async (req, res) => {
+  const nova = await Despesa.create(req.body);
+  res.json(nova);
+});
+
+app.get("/despesa", auth, async (req, res) => {
+  const lista = await Despesa.find();
+  res.json(lista);
+});
+
+// ================= VENDAS =================
+app.post("/venda", auth, async (req, res) => {
+  const nova = await Venda.create(req.body);
+  res.json(nova);
+});
+
+app.get("/relatorio", auth, async (req, res) => {
+  const vendas = await Venda.find();
+  const total = vendas.reduce((soma, v) => soma + v.valor, 0);
+  res.json({ total });
+});
 
 const PORT = process.env.PORT;
-
 app.listen(PORT, "0.0.0.0", () => {
-  console.log("🚀 Servidor rodando na porta " + PORT);
+  console.log("Servidor rodando na porta " + PORT);
 });

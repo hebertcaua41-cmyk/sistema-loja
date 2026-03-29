@@ -1,135 +1,72 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>HS Cell Imports - Login</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+    body{
+      background:#0f172a;
+      color:white;
+      font-family:Arial;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
     }
-
-    .login-box {
-      background: white;
-      padding: 40px;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 350px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-      text-align: center;
+    .box{
+      background:#1e293b;
+      padding:30px;
+      border-radius:10px;
+      width:300px;
+      text-align:center;
     }
-
-    h2 {
-      margin-bottom: 20px;
-      color: #2c5364;
+    input{
+      width:100%;
+      padding:10px;
+      margin:10px 0;
+      border:none;
+      border-radius:5px;
     }
-
-    input {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 8px;
-      background: #2c5364;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    button:hover {
-      background: #203a43;
-    }
-
-    .link {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #555;
-      cursor: pointer;
-    }
-
-    .link:hover {
-      text-decoration: underline;
+    button{
+      width:100%;
+      padding:10px;
+      background:#22c55e;
+      border:none;
+      border-radius:5px;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
     }
   </style>
 </head>
 <body>
 
-  <div class="login-box">
-    <h2>HS Cell Imports</h2>
-
-    <input type="text" id="usuario" placeholder="Usuário">
-    <input type="password" id="senha" placeholder="Senha">
-
-    <button onclick="login()">Entrar</button>
-    <div class="link" onclick="recuperar()">Esqueci minha senha</div>
-  </div>
+<div class="box">
+  <h2>HS CELL IMPORTS</h2>
+  <input type="text" id="usuario" placeholder="Usuário">
+  <input type="password" id="senha" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+  <p id="erro" style="color:red;"></p>
+</div>
 
 <script>
-async function login() {
+async function login(){
   const usuario = document.getElementById("usuario").value;
   const senha = document.getElementById("senha").value;
 
-  if (!usuario || !senha) {
-    alert("Preencha usuário e senha");
-    return;
-  }
+  const res = await fetch("/login",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({usuario,senha})
+  });
 
-  try {
-    const resposta = await fetch("/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usuario, senha })
-    });
+  const data = await res.json();
 
-    const dados = await resposta.json();
-
-    if (resposta.ok) {
-      alert("Login realizado com sucesso!");
-      localStorage.setItem("token", dados.token);
-      window.location.href = "/sistema.html";
-    } else {
-      alert(dados.erro || "Usuário ou senha inválidos");
-    }
-  } catch (erro) {
-    alert("Erro ao conectar com servidor");
-  }
-}
-
-async function recuperar() {
-  const usuario = document.getElementById("usuario").value;
-
-  if (!usuario) {
-    alert("Digite seu usuário para recuperar senha");
-    return;
-  }
-
-  try {
-    const resposta = await fetch("/recuperar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ usuario })
-    });
-
-    const dados = await resposta.json();
-    alert(dados.mensagem || dados.erro);
-  } catch (erro) {
-    alert("Erro ao conectar com servidor");
+  if(data.token){
+    localStorage.setItem("token",data.token);
+    window.location.href="/sistema.html";
+  }else{
+    document.getElementById("erro").innerText=data.erro;
   }
 }
 </script>
