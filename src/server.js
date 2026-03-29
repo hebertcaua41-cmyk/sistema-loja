@@ -12,21 +12,29 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "../public")));
 
 
-// ==================
+// =============================
 // CONEXÃO MONGODB
-// ==================
+// =============================
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB conectado"))
-.catch(err => console.log(err));
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(async () => {
+  console.log("✅ MongoDB conectado");
+
+  // Só cria admin depois que conectar
+  await criarAdminPadrao();
+})
+.catch(err => console.log("❌ Erro Mongo:", err));
 
 
-// ==================
+// =============================
 // MODELO USUÁRIO
-// ==================
+// =============================
 
 const UsuarioSchema = new mongoose.Schema({
-  usuario: String,
+  usuario: { type: String, unique: true },
   senha: String,
   nivel: String
 });
@@ -34,99 +42,32 @@ const UsuarioSchema = new mongoose.Schema({
 const Usuario = mongoose.model("Usuario", UsuarioSchema);
 
 
-// ==================
+// =============================
 // CRIAR ADMIN AUTOMÁTICO
-// ==================
+// =============================
 
 async function criarAdminPadrao() {
-  const existe = await Usuario.findOne({ usuario: "admin" });
+  try {
+    const existe = await Usuario.findOne({ usuario: "admin" });
 
-  if (!existe) {
-    const senhaHash = await bcrypt.hash("123456", 10);
+    if (!existe) {
+      const senhaHash = await bcrypt.hash("123456", 10);
 
-    await Usuario.create({
-      usuario: "admin",
-      senha: senhaHash,
-      nivel: "admin"
-    });
+      await Usuario.create({
+        usuario: "admin",
+        senha: senhaHash,
+        nivel: "admin"
+      });
 
-    console.log("Admin padrão criado: admin / 123456");
+      console.log("🔥 Admin criado: admin / 123456");
+    } else {
+      console.log("ℹ Admin já existe");
+    }
+  } catch (err) {
+    console.log("Erro ao criar admin:", err);
   }
 }
 
-criarAdminPadrao();
 
-
-// ==================
-// LOGIN
-// ==================
-
-app.post("/login", async (req, res) => {
-  try {
-    const { usuario, senha } = req.body;
-
-    if (!usuario || !senha) {
-      return res.status(400).json({ erro: "Preencha todos os campos" });
-    }
-
-    const user = await Usuario.findOne({ usuario });
-
-    if (!user) {
-      return res.status(400).json({ erro: "Usuário não encontrado" });
-    }
-
-    const senhaValida = await bcrypt.compare(senha, user.senha);
-
-    if (!senhaValida) {
-      return res.status(400).json({ erro: "Senha inválida" });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, nivel: user.nivel },
-      "segredo_super",
-      { expiresIn: "8h" }
-    );
-
-    res.json({ mensagem: "Login realizado", token });
-
-  } catch (error) {
-    res.status(500).json({ erro: "Erro no servidor" });
-  }
-});
-
-
-// ==================
-// RECUPERAR (SIMPLES)
-// ==================
-
-app.post("/recuperar", async (req, res) => {
-  const { usuario } = req.body;
-
-  const user = await Usuario.findOne({ usuario });
-
-  if (!user) {
-    return res.status(404).json({ erro: "Usuário não encontrado" });
-  }
-
-  res.json({ mensagem: "Procure o administrador para redefinir sua senha." });
-});
-
-
-// ==================
-// SERVIR INDEX
-// ==================
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
-});
-
-
-// ==================
-// INICIAR SERVIDOR
-// ==================
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
-});
+// =============================
+//
