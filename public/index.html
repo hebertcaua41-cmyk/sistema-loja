@@ -1,9 +1,189 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <title>HS Cell Imports</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HS Cell Imports - Sistema</title>
+
+<style>
+body{
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+  margin:0;
+  padding:0;
+}
+
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+.card{
+  background:#1e293b;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+}
+
+input, select{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:5px;
+  border:none;
+}
+
+button{
+  padding:10px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.btn{
+  background:#22c55e;
+  color:white;
+}
+
+.btn-danger{
+  background:#ef4444;
+  color:white;
+}
+
+.hidden{
+  display:none;
+}
+</style>
 </head>
 <body>
-  <h1>🔥 HS Cell Imports Online 🚀</h1>
+
+<div class="container">
+
+<h1>🔥 HS Cell Imports</h1>
+
+<!-- LOGIN -->
+<div id="loginCard" class="card">
+  <h2>Login</h2>
+  <input id="username" placeholder="Usuário">
+  <input id="password" type="password" placeholder="Senha">
+  <button class="btn" onclick="login()">Entrar</button>
+</div>
+
+<!-- SISTEMA -->
+<div id="sistema" class="hidden">
+
+  <div class="card">
+    <h2>📊 Dashboard</h2>
+    <p>Total do mês: R$ <span id="totalMes">0</span></p>
+    <p>Meta: R$ 5000</p>
+    <p>Falta: R$ <span id="falta">0</span></p>
+  </div>
+
+  <div class="card">
+    <h2>➕ Nova Ordem de Serviço</h2>
+    <input id="cliente" placeholder="Cliente">
+    <input id="telefone" placeholder="Telefone">
+    <input id="aparelho" placeholder="Aparelho">
+    <input id="defeito" placeholder="Defeito">
+    <input id="valor" type="number" placeholder="Valor">
+    <input id="garantia" placeholder="Garantia (ex: 30 dias)">
+    <button class="btn" onclick="criarOS()">Salvar OS</button>
+  </div>
+
+  <div class="card">
+    <h2>📋 Ordens de Serviço</h2>
+    <div id="listaOS"></div>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+
+let token = "";
+
+async function login(){
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+
+  if(data.token){
+    token = data.token;
+    document.getElementById("loginCard").classList.add("hidden");
+    document.getElementById("sistema").classList.remove("hidden");
+    carregarOS();
+    carregarDashboard();
+  }else{
+    alert(data.message);
+  }
+}
+
+async function criarOS(){
+  await fetch("/os",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({
+      cliente:cliente.value,
+      telefone:telefone.value,
+      aparelho:aparelho.value,
+      defeito:defeito.value,
+      valor:Number(valor.value),
+      garantia:garantia.value
+    })
+  });
+
+  alert("OS criada!");
+  carregarOS();
+  carregarDashboard();
+}
+
+async function carregarOS(){
+  const res = await fetch("/os");
+  const lista = await res.json();
+
+  const div = document.getElementById("listaOS");
+  div.innerHTML = "";
+
+  lista.forEach(os=>{
+    div.innerHTML += `
+      <div style="border-bottom:1px solid gray;padding:10px;">
+        <b>${os.cliente}</b> - ${os.aparelho}
+        <br>R$ ${os.valor}
+        <br>Status: ${os.status}
+        <br>Garantia: ${os.garantia}
+        <br>
+        <button class="btn-danger" onclick="excluirOS('${os._id}')">Excluir</button>
+      </div>
+    `;
+  });
+}
+
+async function excluirOS(id){
+  await fetch("/os/"+id,{ method:"DELETE" });
+  carregarOS();
+  carregarDashboard();
+}
+
+async function carregarDashboard(){
+  const res = await fetch("/dashboard");
+  const data = await res.json();
+
+  document.getElementById("totalMes").innerText = data.totalMes;
+  document.getElementById("falta").innerText = data.falta;
+}
+
+</script>
+
 </body>
 </html>
