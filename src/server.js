@@ -16,14 +16,9 @@ app.use(express.static(path.join(__dirname, "../public")));
 // CONEXÃO MONGODB
 // =============================
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(async () => {
   console.log("✅ MongoDB conectado");
-
-  // Só cria admin depois que conectar
   await criarAdminPadrao();
 })
 .catch(err => console.log("❌ Erro Mongo:", err));
@@ -70,4 +65,77 @@ async function criarAdminPadrao() {
 
 
 // =============================
-//
+// LOGIN
+// =============================
+
+app.post("/login", async (req, res) => {
+  try {
+    const { usuario, senha } = req.body;
+
+    if (!usuario || !senha) {
+      return res.status(400).json({ erro: "Preencha usuário e senha" });
+    }
+
+    const user = await Usuario.findOne({ usuario });
+
+    if (!user) {
+      return res.status(400).json({ erro: "Usuário não encontrado" });
+    }
+
+    const senhaValida = await bcrypt.compare(senha, user.senha);
+
+    if (!senhaValida) {
+      return res.status(400).json({ erro: "Senha inválida" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, nivel: user.nivel },
+      "segredo_super",
+      { expiresIn: "8h" }
+    );
+
+    res.json({ mensagem: "Login realizado", token });
+
+  } catch (err) {
+    res.status(500).json({ erro: "Erro interno no servidor" });
+  }
+});
+
+
+// =============================
+// RECUPERAR
+// =============================
+
+app.post("/recuperar", async (req, res) => {
+  const { usuario } = req.body;
+
+  const user = await Usuario.findOne({ usuario });
+
+  if (!user) {
+    return res.status(404).json({ erro: "Usuário não encontrado" });
+  }
+
+  res.json({
+    mensagem: "Procure o administrador para redefinir sua senha."
+  });
+});
+
+
+// =============================
+// ROTA PRINCIPAL
+// =============================
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+
+// =============================
+// SERVIDOR (CORRETO PARA RENDER)
+// =============================
+
+const PORT = process.env.PORT;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("🚀 Servidor rodando na porta " + PORT);
+});
