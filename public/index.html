@@ -6,273 +6,209 @@
 <title>HS Cell Imports</title>
 
 <style>
-body{
-  font-family: Arial;
-  margin:0;
-  background:#f4f6f9;
-}
-
-header{
-  background:#111;
-  color:white;
-  padding:15px;
-  text-align:center;
-  font-size:20px;
-  font-weight:bold;
-}
-
-nav{
-  display:flex;
-  justify-content:space-around;
-  background:#222;
-}
-
-nav button{
-  flex:1;
-  padding:12px;
-  border:none;
-  background:#222;
-  color:white;
-  cursor:pointer;
-}
-
-nav button:hover{
-  background:#444;
-}
-
-section{
-  display:none;
-  padding:20px;
-}
-
-section.active{
-  display:block;
-}
-
-input, select{
-  width:100%;
-  padding:8px;
-  margin-bottom:10px;
-}
-
-button.salvar{
-  background:#28a745;
-  color:white;
-  border:none;
-  padding:10px;
-  width:100%;
-  cursor:pointer;
-}
-
-table{
-  width:100%;
-  background:white;
-  border-collapse:collapse;
-  margin-top:20px;
-}
-
-th,td{
-  border:1px solid #ddd;
-  padding:8px;
-  text-align:center;
-}
+body{margin:0;font-family:Arial;background:#f4f6f9}
+header{background:#111;color:#fff;padding:15px;text-align:center;font-size:20px}
+nav{background:#222;display:flex;flex-wrap:wrap;gap:5px;padding:10px;justify-content:center}
+nav button{background:#00c853;border:none;padding:8px 12px;color:white;font-weight:bold;border-radius:5px;cursor:pointer}
+section{display:none;padding:20px}
+section.active{display:block}
+input,select{width:100%;padding:8px;margin:5px 0}
+button.salvar{background:#2196f3;color:white;padding:10px;border:none;width:100%;margin-top:10px;font-weight:bold}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:14px}
+th{background:#eee}
+.acao{padding:4px 6px;border:none;color:white;border-radius:4px;cursor:pointer}
+.pdf{background:#673ab7}
+.excluir{background:#e53935}
 </style>
 </head>
 <body>
 
-<header>📱 HS Cell Imports - Sistema</header>
+<header>📱 HS Cell Imports - Sistema Profissional</header>
 
 <nav>
-  <button onclick="abrir('os')">OS</button>
-  <button onclick="abrir('estoque')">Estoque</button>
-  <button onclick="abrir('dashboard')">Dashboard</button>
+<button onclick="abrir('os')">Nova OS</button>
+<button onclick="abrir('listaOS')">Lista OS</button>
+<button onclick="abrir('estoque')">Estoque</button>
+<button onclick="abrir('venda')">Nova Venda</button>
+<button onclick="abrir('listaVendas')">Vendas</button>
 </nav>
 
 <!-- OS -->
 <section id="os" class="active">
 <h3>Nova Ordem de Serviço</h3>
-
-<input id="cliente" placeholder="Nome do cliente">
+<input id="cliente" placeholder="Cliente">
 <input id="telefone" placeholder="Telefone">
 <input id="aparelho" placeholder="Aparelho">
 <input id="defeito" placeholder="Defeito">
 <input id="valor" type="number" placeholder="Valor">
 <input id="garantia" placeholder="Garantia">
 <select id="status">
-  <option>Em andamento</option>
-  <option>Pronto</option>
-  <option>Entregue</option>
+<option>Em andamento</option>
+<option>Pronto</option>
+<option>Entregue</option>
 </select>
-
 <button class="salvar" onclick="salvarOS()">Salvar OS</button>
+</section>
 
-<h3>Ordens</h3>
+<section id="listaOS">
+<h3>Ordens de Serviço</h3>
 <table>
 <thead>
-<tr>
-<th>Cliente</th>
-<th>Aparelho</th>
-<th>Valor</th>
-<th>Status</th>
-<th>Ações</th>
-</tr>
+<tr><th>Cliente</th><th>Aparelho</th><th>Valor</th><th>Status</th><th>Ações</th></tr>
 </thead>
-<tbody id="listaOS"></tbody>
+<tbody id="tabelaOS"></tbody>
 </table>
 </section>
 
 <!-- ESTOQUE -->
 <section id="estoque">
-<h3>Novo Produto</h3>
+<h3>Cadastro de Produto</h3>
+<input id="produto" placeholder="Produto">
+<input id="quantidade" type="number" placeholder="Quantidade">
+<input id="preco" type="number" placeholder="Preço unitário">
+<button class="salvar" onclick="salvarEstoque()">Salvar Produto</button>
 
-<input id="nomeProduto" placeholder="Nome">
-<input id="quantidadeProduto" type="number" placeholder="Quantidade">
-<input id="precoProduto" type="number" placeholder="Preço Venda">
-
-<button class="salvar" onclick="salvarProduto()">Salvar Produto</button>
-
-<h3>Produtos</h3>
+<h3>Lista Estoque</h3>
 <table>
 <thead>
-<tr>
-<th>Nome</th>
-<th>Qtd</th>
-<th>Preço</th>
-</tr>
+<tr><th>Produto</th><th>Qtd</th><th>Preço</th></tr>
 </thead>
-<tbody id="listaEstoque"></tbody>
+<tbody id="tabelaEstoque"></tbody>
 </table>
 </section>
 
-<!-- DASHBOARD -->
-<section id="dashboard">
-<h3>Resumo do Mês</h3>
-<p><b>Vendas:</b> R$ <span id="vendas"></span></p>
-<p><b>Despesas:</b> R$ <span id="despesas"></span></p>
-<p><b>Lucro:</b> R$ <span id="lucro"></span></p>
+<!-- VENDA -->
+<section id="venda">
+<h3>Nova Venda</h3>
+<input id="clienteVenda" placeholder="Cliente">
+<input id="produtoVenda" placeholder="Produto">
+<input id="quantidadeVenda" type="number" placeholder="Quantidade">
+<button class="salvar" onclick="gerarVenda()">Finalizar Venda</button>
+</section>
+
+<section id="listaVendas">
+<h3>Histórico de Vendas</h3>
+<table>
+<thead>
+<tr><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Total</th></tr>
+</thead>
+<tbody id="tabelaVendas"></tbody>
+</table>
 </section>
 
 <script>
 
-/* ===== MENU ===== */
 function abrir(sec){
-  document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-  document.getElementById(sec).classList.add("active");
-  if(sec==="dashboard") carregarDashboard();
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(sec).classList.add("active");
 }
 
-/* ===== OS ===== */
+/* ================= OS ================= */
 
 async function salvarOS(){
-
-  const dados = {
-    cliente: document.getElementById("cliente").value,
-    telefone: document.getElementById("telefone").value,
-    aparelho: document.getElementById("aparelho").value,
-    defeito: document.getElementById("defeito").value,
-    valor: Number(document.getElementById("valor").value),
-    garantia: document.getElementById("garantia").value,
-    status: document.getElementById("status").value
-  };
-
-  const response = await fetch("/os",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify(dados)
-  });
-
-  if(response.ok){
-    alert("OS salva com sucesso!");
-    carregarOS();
-  }else{
-    alert("Erro ao salvar");
-  }
+const dados={
+cliente:cliente.value,
+telefone:telefone.value,
+aparelho:aparelho.value,
+defeito:defeito.value,
+valor:Number(valor.value),
+garantia:garantia.value,
+status:status.value
+};
+await fetch("/os",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
+alert("OS salva!");
+carregarOS();
 }
 
 async function carregarOS(){
-  const res = await fetch("/os");
-  const lista = await res.json();
-
-  const tbody = document.getElementById("listaOS");
-  tbody.innerHTML="";
-
-  lista.forEach(os=>{
-    tbody.innerHTML += `
-      <tr>
-        <td>${os.cliente}</td>
-        <td>${os.aparelho}</td>
-        <td>R$ ${os.valor}</td>
-        <td>${os.status}</td>
-        <td>
-          <button onclick="gerarPDF('${os._id}')">PDF</button>
-          <button onclick="excluirOS('${os._id}')">Excluir</button>
-        </td>
-      </tr>
-    `;
-  });
-}
-
-function gerarPDF(id){
-  window.open(`/os/${id}/pdf`,"_blank");
+const res=await fetch("/os");
+const lista=await res.json();
+tabelaOS.innerHTML="";
+lista.forEach(os=>{
+tabelaOS.innerHTML+=`
+<tr>
+<td>${os.cliente}</td>
+<td>${os.aparelho}</td>
+<td>R$ ${os.valor}</td>
+<td>${os.status}</td>
+<td>
+<button class="acao pdf" onclick="window.open('/os/${os._id}/pdf')">PDF</button>
+<button class="acao excluir" onclick="excluirOS('${os._id}')">X</button>
+</td>
+</tr>`;
+});
 }
 
 async function excluirOS(id){
-  await fetch(`/os/${id}`,{method:"DELETE"});
-  carregarOS();
+await fetch("/os/"+id,{method:"DELETE"});
+carregarOS();
 }
 
-/* ===== ESTOQUE ===== */
+/* ================= ESTOQUE ================= */
 
-async function salvarProduto(){
-  const dados={
-    nome: document.getElementById("nomeProduto").value,
-    quantidade: Number(document.getElementById("quantidadeProduto").value),
-    precoVenda: Number(document.getElementById("precoProduto").value)
-  };
-
-  await fetch("/estoque",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(dados)
-  });
-
-  carregarEstoque();
+async function salvarEstoque(){
+const dados={
+produto:produto.value,
+quantidade:Number(quantidade.value),
+preco:Number(preco.value)
+};
+await fetch("/estoque",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
+alert("Produto salvo!");
+carregarEstoque();
 }
 
 async function carregarEstoque(){
-  const res = await fetch("/estoque");
-  const lista = await res.json();
-
-  const tbody = document.getElementById("listaEstoque");
-  tbody.innerHTML="";
-
-  lista.forEach(p=>{
-    tbody.innerHTML += `
-      <tr>
-        <td>${p.nome}</td>
-        <td>${p.quantidade}</td>
-        <td>R$ ${p.precoVenda}</td>
-      </tr>
-    `;
-  });
+const res=await fetch("/estoque");
+const lista=await res.json();
+tabelaEstoque.innerHTML="";
+lista.forEach(p=>{
+tabelaEstoque.innerHTML+=`
+<tr>
+<td>${p.produto}</td>
+<td>${p.quantidade}</td>
+<td>R$ ${p.preco}</td>
+</tr>`;
+});
 }
 
-/* ===== DASHBOARD ===== */
+/* ================= VENDA ================= */
 
-async function carregarDashboard(){
-  const res = await fetch("/dashboard");
-  const data = await res.json();
-
-  document.getElementById("vendas").innerText=data.vendas||0;
-  document.getElementById("despesas").innerText=data.despesas||0;
-  document.getElementById("lucro").innerText=data.lucro||0;
+async function gerarVenda(){
+const dados={
+cliente:clienteVenda.value,
+produto:produtoVenda.value,
+quantidade:Number(quantidadeVenda.value)
+};
+const res=await fetch("/venda",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
+const r=await res.json();
+if(r.erro){alert(r.erro);return;}
+alert("Venda realizada! Total: R$ "+r.total);
+carregarEstoque();
+carregarVendas();
 }
 
-/* INIT */
+async function carregarVendas(){
+const res=await fetch("/vendas");
+const lista=await res.json();
+tabelaVendas.innerHTML="";
+lista.forEach(v=>{
+tabelaVendas.innerHTML+=`
+<tr>
+<td>${v.cliente}</td>
+<td>${v.produto}</td>
+<td>${v.quantidade}</td>
+<td>R$ ${v.total}</td>
+</tr>`;
+});
+}
+
+window.onload=function(){
 carregarOS();
 carregarEstoque();
+carregarVendas();
+}
 
 </script>
-
 </body>
 </html>
