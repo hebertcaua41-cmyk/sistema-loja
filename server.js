@@ -13,7 +13,7 @@ const app = express();
 
 const PORT = process.env.PORT || 10000;
 const MONGO_URI = process.env.MONGO_URI;
-const JWT_SECRET = process.env.JWT_SECRET || "hs_cell_super_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "hs_cell_secret";
 
 /* =========================
    MIDDLEWARES
@@ -32,7 +32,7 @@ mongoose.connect(MONGO_URI)
   .catch(err => console.log("❌ Erro Mongo:", err));
 
 /* =========================
-   MODEL USER
+   MODEL USUÁRIO
 ========================= */
 
 const UserSchema = new mongoose.Schema({
@@ -42,6 +42,23 @@ const UserSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model("User", UserSchema);
+
+/* =========================
+   MODEL ORDEM DE SERVIÇO
+========================= */
+
+const OSSchema = new mongoose.Schema({
+  cliente: String,
+  telefone: String,
+  aparelho: String,
+  defeito: String,
+  valor: Number,
+  garantia: String,
+  status: { type: String, default: "Em andamento" },
+  data: { type: Date, default: Date.now }
+});
+
+const OS = mongoose.model("OS", OSSchema);
 
 /* =========================
    CRIAR ADMIN AUTOMÁTICO
@@ -73,48 +90,5 @@ createAdmin();
    ROTAS
 ========================= */
 
-// TESTE BACKEND
-app.get("/health", (req, res) => {
-  res.json({ status: "OK" });
-});
-
-// ROTA RAIZ (resolve Cannot GET /)
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// LOGIN
-app.post("/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ message: "Usuário não encontrado" });
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(400).json({ message: "Senha inválida" });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    res.json({ token });
-
-  } catch (err) {
-    res.status(500).json({ message: "Erro no servidor" });
-  }
-});
-
-/* =========================
-   START SERVER
-========================= */
-
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
+// TESTE
+app.get
