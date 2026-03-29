@@ -17,26 +17,22 @@ button.salvar{background:#2196f3;color:white;padding:10px;border:none;width:100%
 table{width:100%;border-collapse:collapse;margin-top:15px}
 th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:14px}
 th{background:#eee}
-.acao{padding:4px 6px;border:none;color:white;border-radius:4px;cursor:pointer}
-.pdf{background:#673ab7}
-.excluir{background:#e53935}
 </style>
 </head>
 <body>
 
-<header>📱 HS Cell Imports - Sistema Profissional</header>
+<header>📱 HS Cell Imports - Sistema Completo</header>
 
 <nav>
 <button onclick="abrir('os')">Nova OS</button>
-<button onclick="abrir('listaOS')">Lista OS</button>
 <button onclick="abrir('estoque')">Estoque</button>
-<button onclick="abrir('venda')">Nova Venda</button>
-<button onclick="abrir('listaVendas')">Vendas</button>
+<button onclick="abrir('venda')">Venda</button>
+<button onclick="abrir('despesas')">Despesas</button>
+<button onclick="abrir('dashboard')">Dashboard</button>
 </nav>
 
-<!-- OS -->
 <section id="os" class="active">
-<h3>Nova Ordem de Serviço</h3>
+<h3>Nova OS</h3>
 <input id="cliente" placeholder="Cliente">
 <input id="telefone" placeholder="Telefone">
 <input id="aparelho" placeholder="Aparelho">
@@ -51,63 +47,51 @@ th{background:#eee}
 <button class="salvar" onclick="salvarOS()">Salvar OS</button>
 </section>
 
-<section id="listaOS">
-<h3>Ordens de Serviço</h3>
-<table>
-<thead>
-<tr><th>Cliente</th><th>Aparelho</th><th>Valor</th><th>Status</th><th>Ações</th></tr>
-</thead>
-<tbody id="tabelaOS"></tbody>
-</table>
-</section>
-
-<!-- ESTOQUE -->
 <section id="estoque">
-<h3>Cadastro de Produto</h3>
+<h3>Estoque</h3>
 <input id="produto" placeholder="Produto">
 <input id="quantidade" type="number" placeholder="Quantidade">
-<input id="preco" type="number" placeholder="Preço unitário">
+<input id="preco" type="number" placeholder="Preço">
 <button class="salvar" onclick="salvarEstoque()">Salvar Produto</button>
-
-<h3>Lista Estoque</h3>
-<table>
-<thead>
-<tr><th>Produto</th><th>Qtd</th><th>Preço</th></tr>
-</thead>
-<tbody id="tabelaEstoque"></tbody>
-</table>
+<div id="listaEstoque"></div>
 </section>
 
-<!-- VENDA -->
 <section id="venda">
-<h3>Nova Venda</h3>
+<h3>Venda</h3>
 <input id="clienteVenda" placeholder="Cliente">
 <input id="produtoVenda" placeholder="Produto">
 <input id="quantidadeVenda" type="number" placeholder="Quantidade">
 <button class="salvar" onclick="gerarVenda()">Finalizar Venda</button>
 </section>
 
-<section id="listaVendas">
-<h3>Histórico de Vendas</h3>
-<table>
-<thead>
-<tr><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Total</th></tr>
-</thead>
-<tbody id="tabelaVendas"></tbody>
-</table>
+<section id="despesas">
+<h3>Despesas</h3>
+<input id="descDespesa" placeholder="Descrição">
+<input id="valorDespesa" type="number" placeholder="Valor">
+<button class="salvar" onclick="salvarDespesa()">Salvar</button>
+</section>
+
+<section id="dashboard">
+<h3>Resumo Financeiro</h3>
+<p>Total Vendas: R$ <span id="totalVendas">0</span></p>
+<p>Total Despesas: R$ <span id="totalDespesas">0</span></p>
+<p>Lucro: R$ <span id="lucro">0</span></p>
+<h4>Meta: R$ 5.000</h4>
+<div style="background:#ddd;height:25px;border-radius:20px;">
+<div id="barraMeta" style="height:25px;width:0%;background:#00c853;border-radius:20px;text-align:center;color:white;"></div>
+</div>
 </section>
 
 <script>
 
-function abrir(sec){
+function abrir(id){
 document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-document.getElementById(sec).classList.add("active");
+document.getElementById(id).classList.add("active");
 }
 
-/* ================= OS ================= */
-
 async function salvarOS(){
-const dados={
+await fetch("/os",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
 cliente:cliente.value,
 telefone:telefone.value,
 aparelho:aparelho.value,
@@ -115,99 +99,62 @@ defeito:defeito.value,
 valor:Number(valor.value),
 garantia:garantia.value,
 status:status.value
-};
-await fetch("/os",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
-alert("OS salva!");
-carregarOS();
+})});
+alert("OS salva");
 }
-
-async function carregarOS(){
-const res=await fetch("/os");
-const lista=await res.json();
-tabelaOS.innerHTML="";
-lista.forEach(os=>{
-tabelaOS.innerHTML+=`
-<tr>
-<td>${os.cliente}</td>
-<td>${os.aparelho}</td>
-<td>R$ ${os.valor}</td>
-<td>${os.status}</td>
-<td>
-<button class="acao pdf" onclick="window.open('/os/${os._id}/pdf')">PDF</button>
-<button class="acao excluir" onclick="excluirOS('${os._id}')">X</button>
-</td>
-</tr>`;
-});
-}
-
-async function excluirOS(id){
-await fetch("/os/"+id,{method:"DELETE"});
-carregarOS();
-}
-
-/* ================= ESTOQUE ================= */
 
 async function salvarEstoque(){
-const dados={
+await fetch("/estoque",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
 produto:produto.value,
 quantidade:Number(quantidade.value),
 preco:Number(preco.value)
-};
-await fetch("/estoque",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
-alert("Produto salvo!");
-carregarEstoque();
+})});
+alert("Produto salvo");
 }
-
-async function carregarEstoque(){
-const res=await fetch("/estoque");
-const lista=await res.json();
-tabelaEstoque.innerHTML="";
-lista.forEach(p=>{
-tabelaEstoque.innerHTML+=`
-<tr>
-<td>${p.produto}</td>
-<td>${p.quantidade}</td>
-<td>R$ ${p.preco}</td>
-</tr>`;
-});
-}
-
-/* ================= VENDA ================= */
 
 async function gerarVenda(){
-const dados={
+const res=await fetch("/venda",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
 cliente:clienteVenda.value,
 produto:produtoVenda.value,
 quantidade:Number(quantidadeVenda.value)
-};
-const res=await fetch("/venda",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
+})});
 const r=await res.json();
 if(r.erro){alert(r.erro);return;}
-alert("Venda realizada! Total: R$ "+r.total);
-carregarEstoque();
-carregarVendas();
+alert("Venda realizada R$ "+r.total);
+carregarDashboard();
 }
 
-async function carregarVendas(){
-const res=await fetch("/vendas");
-const lista=await res.json();
-tabelaVendas.innerHTML="";
-lista.forEach(v=>{
-tabelaVendas.innerHTML+=`
-<tr>
-<td>${v.cliente}</td>
-<td>${v.produto}</td>
-<td>${v.quantidade}</td>
-<td>R$ ${v.total}</td>
-</tr>`;
-});
+async function salvarDespesa(){
+await fetch("/despesas",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+descricao:descDespesa.value,
+valor:Number(valorDespesa.value)
+})});
+alert("Despesa salva");
+carregarDashboard();
 }
 
-window.onload=function(){
-carregarOS();
-carregarEstoque();
-carregarVendas();
+async function carregarDashboard(){
+const vendas=await (await fetch("/vendas")).json();
+const despesas=await (await fetch("/despesas")).json();
+
+let totalV=0; vendas.forEach(v=>totalV+=v.total);
+let totalD=0; despesas.forEach(d=>totalD+=d.valor);
+
+totalVendas.innerText=totalV;
+totalDespesas.innerText=totalD;
+lucro.innerText=totalV-totalD;
+
+let meta=5000;
+let p=(totalV/meta)*100;
+if(p>100)p=100;
+barraMeta.style.width=p+"%";
+barraMeta.innerText=Math.floor(p)+"%";
 }
+
+window.onload=carregarDashboard;
 
 </script>
 </body>

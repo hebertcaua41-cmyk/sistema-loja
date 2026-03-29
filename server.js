@@ -2,8 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
+const PDFDocument = require("pdfkit");
 
 const app = express();
+
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
@@ -39,11 +41,18 @@ const vendaSchema = new mongoose.Schema({
   data:{type:Date, default:Date.now}
 });
 
+const despesaSchema = new mongoose.Schema({
+  descricao:String,
+  valor:Number,
+  data:{type:Date, default:Date.now}
+});
+
 const OS = mongoose.model("OS", osSchema);
 const Estoque = mongoose.model("Estoque", estoqueSchema);
 const Venda = mongoose.model("Venda", vendaSchema);
+const Despesa = mongoose.model("Despesa", despesaSchema);
 
-/* ================= ROTAS OS ================= */
+/* ================= OS ================= */
 
 app.post("/os", async(req,res)=>{
   const nova = await OS.create(req.body);
@@ -58,6 +67,28 @@ app.get("/os", async(req,res)=>{
 app.delete("/os/:id", async(req,res)=>{
   await OS.findByIdAndDelete(req.params.id);
   res.json({ok:true});
+});
+
+app.get("/os/:id/pdf", async(req,res)=>{
+  const os = await OS.findById(req.params.id);
+  if(!os) return res.status(404).send("OS não encontrada");
+
+  const doc = new PDFDocument();
+  res.setHeader("Content-Type","application/pdf");
+  doc.pipe(res);
+
+  doc.fontSize(18).text("HS Cell Imports",{align:"center"});
+  doc.moveDown();
+  doc.text(`Cliente: ${os.cliente}`);
+  doc.text(`Telefone: ${os.telefone}`);
+  doc.text(`Aparelho: ${os.aparelho}`);
+  doc.text(`Defeito: ${os.defeito}`);
+  doc.text(`Valor: R$ ${os.valor}`);
+  doc.text(`Garantia: ${os.garantia}`);
+  doc.text(`Status: ${os.status}`);
+  doc.text(`Data: ${os.data}`);
+
+  doc.end();
 });
 
 /* ================= ESTOQUE ================= */
@@ -97,42 +128,4 @@ app.post("/venda", async(req,res)=>{
 });
 
 app.get("/vendas", async(req,res)=>{
-  const lista = await Venda.find().sort({data:-1});
-  res.json(lista);
-});
-
-/* ================= PDF OS ================= */
-
-const PDFDocument = require("pdfkit");
-
-app.get("/os/:id/pdf", async(req,res)=>{
-  const os = await OS.findById(req.params.id);
-  if(!os) return res.status(404).send("OS não encontrada");
-
-  const doc = new PDFDocument();
-  res.setHeader("Content-Type","application/pdf");
-  doc.pipe(res);
-
-  doc.fontSize(18).text("HS Cell Imports",{align:"center"});
-  doc.moveDown();
-  doc.text(`Cliente: ${os.cliente}`);
-  doc.text(`Telefone: ${os.telefone}`);
-  doc.text(`Aparelho: ${os.aparelho}`);
-  doc.text(`Defeito: ${os.defeito}`);
-  doc.text(`Valor: R$ ${os.valor}`);
-  doc.text(`Garantia: ${os.garantia}`);
-  doc.text(`Status: ${os.status}`);
-  doc.text(`Data: ${os.data}`);
-
-  doc.end();
-});
-
-/* ================= ROOT ================= */
-
-app.get("/", (req,res)=>{
-  res.sendFile(path.join(__dirname,"public","index.html"));
-});
-
-app.listen(process.env.PORT || 3000, ()=>{
-  console.log("HS Cell Imports online");
-});
+  const lista
