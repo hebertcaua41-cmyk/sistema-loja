@@ -1,5 +1,5 @@
 {
-  "name": "hs-cell-backend",
+  "name": "hs-cell-system",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
@@ -11,6 +11,6 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.0",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.15.2"
   }
 }
