@@ -1,254 +1,138 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>HS CELL IMPORTS</title>
+  <meta charset="UTF-8">
+  <title>HS Cell Imports - Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
 
-<style>
-body{
-  font-family:Arial;
-  background:#0f172a;
-  color:white;
-  margin:0;
-  padding:20px;
-}
-h1{text-align:center;color:#38bdf8}
-.menu{display:flex;gap:8px;margin-bottom:20px}
-.menu button{
-  flex:1;
-  padding:10px;
-  background:#1e293b;
-  border:none;
-  color:white;
-  border-radius:8px;
-}
-.card{
-  display:none;
-  background:#1e293b;
-  padding:20px;
-  border-radius:12px;
-  margin-bottom:20px;
-}
-input,button{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border:none;
-  border-radius:8px;
-}
-input{background:#334155;color:white}
-button{background:#22c55e;color:white;font-weight:bold}
-.list-item{
-  background:#334155;
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:8px;
-}
-.logout{
-  background:#ef4444 !important;
-}
-</style>
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 350px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #2c5364;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #2c5364;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #203a43;
+    }
+
+    .link {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
 
-<h1>📱 HS CELL IMPORTS</h1>
+  <div class="login-box">
+    <h2>HS Cell Imports</h2>
 
-<!-- LOGIN -->
-<div id="loginScreen">
-  <h2>Login</h2>
-  <input id="usuarioLogin" placeholder="Usuário">
-  <input id="senhaLogin" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
-  <button onclick="recuperar()">Esqueci a senha</button>
-</div>
+    <input type="text" id="usuario" placeholder="Usuário">
+    <input type="password" id="senha" placeholder="Senha">
 
-<!-- SISTEMA -->
-<div id="sistema" style="display:none">
-
-<div class="menu">
-<button onclick="mostrar('dashboard')">🏠 Início</button>
-<button onclick="mostrar('estoque')">📦 Estoque</button>
-<button onclick="mostrar('ordens')">🛠 OS</button>
-<button onclick="mostrar('vendas')">🛒 Vendas</button>
-<button class="logout" onclick="logout()">Sair</button>
-</div>
-
-<div class="card" id="dashboard">
-<h2>Painel Financeiro</h2>
-<div id="totalMes"></div>
-</div>
-
-<div class="card" id="estoque">
-<h2>Estoque</h2>
-<input id="nome" placeholder="Produto">
-<input id="quantidade" type="number" placeholder="Quantidade">
-<input id="custo" type="number" placeholder="Custo unitário">
-<button onclick="addEstoque()">Adicionar</button>
-<div id="listaEstoque"></div>
-</div>
-
-<div class="card" id="ordens">
-<h2>Nova OS</h2>
-<input id="cliente" placeholder="Cliente">
-<input id="aparelho" placeholder="Aparelho">
-<input id="problema" placeholder="Problema">
-<input id="valorServico" type="number" placeholder="Valor">
-<input id="garantia" placeholder="Garantia">
-<button onclick="addOrdem()">Cadastrar</button>
-<div id="listaOrdens"></div>
-</div>
-
-<div class="card" id="vendas">
-<h2>Nova Venda</h2>
-<input id="clienteVenda" placeholder="Cliente">
-<input id="produto" placeholder="Produto">
-<input id="qtdVenda" type="number" placeholder="Quantidade">
-<input id="valorVenda" type="number" placeholder="Valor unitário">
-<button onclick="addVenda()">Registrar</button>
-<div id="listaVendas"></div>
-</div>
-
-</div>
+    <button onclick="login()">Entrar</button>
+    <div class="link" onclick="recuperar()">Esqueci minha senha</div>
+  </div>
 
 <script>
+async function login() {
+  const usuario = document.getElementById("usuario").value;
+  const senha = document.getElementById("senha").value;
 
-const API = window.location.origin;
-let TOKEN = localStorage.getItem("token");
-let NIVEL = localStorage.getItem("nivel");
-
-/* AUTO LOGIN */
-if(TOKEN){
-  iniciarSistema();
-}
-
-function iniciarSistema(){
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("sistema").style.display="block";
-  mostrar("dashboard");
-  carregarTudo();
-}
-
-/* LOGIN */
-async function login(){
-  const r = await fetch(`${API}/login`,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      usuario:usuarioLogin.value,
-      senha:senhaLogin.value
-    })
-  });
-
-  const d = await r.json();
-
-  if(d.token){
-    TOKEN = d.token;
-    NIVEL = d.nivel;
-    localStorage.setItem("token",TOKEN);
-    localStorage.setItem("nivel",NIVEL);
-    iniciarSistema();
-  }else{
-    alert(d.erro);
+  if (!usuario || !senha) {
+    alert("Preencha usuário e senha");
+    return;
   }
-}
 
-/* LOGOUT */
-function logout(){
-  localStorage.clear();
-  location.reload();
-}
-
-/* MENU */
-function mostrar(id){
-  document.querySelectorAll(".card").forEach(c=>c.style.display="none");
-  document.getElementById(id).style.display="block";
-}
-
-/* RECUPERAR SENHA */
-async function recuperar(){
-  const usuario = prompt("Digite seu usuário:");
-  const r = await fetch(`${API}/recuperar`,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({usuario})
-  });
-  const d = await r.json();
-
-  if(d.token){
-    alert("Token: "+d.token);
-    const token = prompt("Digite o token:");
-    const novaSenha = prompt("Nova senha:");
-    await fetch(`${API}/resetar`,{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({token,novaSenha})
+  try {
+    const resposta = await fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario, senha })
     });
-    alert("Senha alterada!");
-  }else{
-    alert(d.erro);
+
+    const dados = await resposta.json();
+
+    if (resposta.ok) {
+      alert("Login realizado com sucesso!");
+      localStorage.setItem("token", dados.token);
+      window.location.href = "/sistema.html";
+    } else {
+      alert(dados.erro || "Usuário ou senha inválidos");
+    }
+  } catch (erro) {
+    alert("Erro ao conectar com servidor");
   }
 }
 
-/* HEADER AUTH */
-function authHeader(){
-  return {
-    "Content-Type":"application/json",
-    "Authorization":"Bearer "+TOKEN
+async function recuperar() {
+  const usuario = document.getElementById("usuario").value;
+
+  if (!usuario) {
+    alert("Digite seu usuário para recuperar senha");
+    return;
+  }
+
+  try {
+    const resposta = await fetch("/recuperar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ usuario })
+    });
+
+    const dados = await resposta.json();
+    alert(dados.mensagem || dados.erro);
+  } catch (erro) {
+    alert("Erro ao conectar com servidor");
   }
 }
+</script>
 
-/* ================= ESTOQUE ================= */
-
-async function addEstoque(){
-  await fetch(`${API}/estoque`,{
-    method:"POST",
-    headers:authHeader(),
-    body:JSON.stringify({
-      nome:nome.value,
-      quantidade:Number(quantidade.value),
-      custoUnitario:Number(custo.value)
-    })
-  });
-  carregarEstoque();
-}
-
-async function carregarEstoque(){
-  const r=await fetch(`${API}/estoque`,{headers:authHeader()});
-  const d=await r.json();
-  listaEstoque.innerHTML="";
-  d.forEach(p=>{
-    listaEstoque.innerHTML+=`
-      <div class="list-item">
-        ${p.nome} - Qtd: ${p.quantidade}
-      </div>`;
-  });
-}
-
-/* ================= ORDENS ================= */
-
-async function addOrdem(){
-  await fetch(`${API}/ordens`,{
-    method:"POST",
-    headers:authHeader(),
-    body:JSON.stringify({
-      cliente:cliente.value,
-      aparelho:aparelho.value,
-      problema:problema.value,
-      valorServico:Number(valorServico.value),
-      garantia:garantia.value
-    })
-  });
-  carregarOrdens();
-}
-
-async function carregarOrdens(){
-  const r=await fetch(`${API}/ordens`,{headers:authHeader()});
-  const d=await r.json();
-  listaOrdens.innerHTML="";
-  d.forEach(o=>{
-    listaOrdens.innerHTML+=`
-      <div class="list-item">
-        ${o.cliente} - ${o.aparelho} | R$ ${o.valorServico}
-        <br>
-        <button onclick="editar('${o._id}')">Editar</button>
-        ${NIVEL==="admin" ? `<button onclick="excluir('${o._id}')">Excluir
+</body>
+</html>
