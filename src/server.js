@@ -1,173 +1,132 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const PDFDocument = require("pdfkit");
+const cors = require("cors");
 const path = require("path");
 
 const app = express();
-app.use(cors());
+
 app.use(express.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname, "../public")));
 
-mongoose.connect(process.env.MONGO_URI);
 
-/* ================= SCHEMAS ================= */
+// ==================
+// CONEXÃO MONGODB
+// ==================
+
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB conectado"))
+.catch(err => console.log(err));
+
+
+// ==================
+// MODELO USUÁRIO
+// ==================
 
 const UsuarioSchema = new mongoose.Schema({
   usuario: String,
   senha: String,
-  nivel: { type: String, default: "funcionario" },
-  resetToken: String,
-  resetExpira: Date
-});
-
-const EstoqueSchema = new mongoose.Schema({
-  nome: String,
-  quantidade: Number,
-  custoUnitario: Number
-});
-
-const OrdemSchema = new mongoose.Schema({
-  cliente: String,
-  aparelho: String,
-  problema: String,
-  valorServico: Number,
-  garantia: String,
-  data: { type: Date, default: Date.now }
-});
-
-const VendaSchema = new mongoose.Schema({
-  cliente: String,
-  produto: String,
-  quantidade: Number,
-  valorUnitario: Number,
-  total: Number,
-  data: { type: Date, default: Date.now }
+  nivel: String
 });
 
 const Usuario = mongoose.model("Usuario", UsuarioSchema);
-const Estoque = mongoose.model("Estoque", EstoqueSchema);
-const Ordem = mongoose.model("Ordem", OrdemSchema);
-const Venda = mongoose.model("Venda", VendaSchema);
 
-/* ================= AUTH ================= */
 
-function auth(req,res,next){
-  const authHeader = req.headers.authorization;
-  if(!authHeader) return res.status(401).json({erro:"Sem token"});
+// ==================
+// CRIAR ADMIN AUTOMÁTICO
+// ==================
 
-  const token = authHeader.split(" ")[1];
+async function criarAdminPadrao() {
+  const existe = await Usuario.findOne({ usuario: "admin" });
 
-  try{
-    const decoded = jwt.verify(token,"SEGREDO_SUPER_FORTE");
-    req.user = decoded;
-    next();
-  }catch{
-    res.status(401).json({erro:"Token inválido"});
+  if (!existe) {
+    const senhaHash = await bcrypt.hash("123456", 10);
+
+    await Usuario.create({
+      usuario: "admin",
+      senha: senhaHash,
+      nivel: "admin"
+    });
+
+    console.log("Admin padrão criado: admin / 123456");
   }
 }
 
-function somenteAdmin(req,res,next){
-  if(req.user.nivel !== "admin"){
-    return res.status(403).json({erro:"Apenas admin"});
+criarAdminPadrao();
+
+
+// ==================
+// LOGIN
+// ==================
+
+app.post("/login", async (req, res) => {
+  try {
+    const { usuario, senha } = req.body;
+
+    if (!usuario || !senha) {
+      return res.status(400).json({ erro: "Preencha todos os campos" });
+    }
+
+    const user = await Usuario.findOne({ usuario });
+
+    if (!user) {
+      return res.status(400).json({ erro: "Usuário não encontrado" });
+    }
+
+    const senhaValida = await bcrypt.compare(senha, user.senha);
+
+    if (!senhaValida) {
+      return res.status(400).json({ erro: "Senha inválida" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, nivel: user.nivel },
+      "segredo_super",
+      { expiresIn: "8h" }
+    );
+
+    res.json({ mensagem: "Login realizado", token });
+
+  } catch (error) {
+    res.status(500).json({ erro: "Erro no servidor" });
   }
-  next();
-}
-
-/* ================= LOGIN ================= */
-
-app.post("/register", async (req,res)=>{
-  const {usuario, senha, nivel} = req.body;
-  const hash = await bcrypt.hash(senha, 10);
-
-  const novo = await Usuario.create({
-    usuario,
-    senha: hash,
-    nivel: nivel || "funcionario"
-  });
-
-  res.json(novo);
 });
 
-app.post("/login", async (req,res)=>{
-  const {usuario, senha} = req.body;
 
-  const user = await Usuario.findOne({usuario});
-  if(!user) return res.status(400).json({erro:"Usuário não encontrado"});
+// ==================
+// RECUPERAR (SIMPLES)
+// ==================
 
-  const senhaValida = await bcrypt.compare(senha, user.senha);
-  if(!senhaValida) return res.status(400).json({erro:"Senha inválida"});
+app.post("/recuperar", async (req, res) => {
+  const { usuario } = req.body;
 
-  const token = jwt.sign(
-    {id:user._id, nivel:user.nivel},
-    "SEGREDO_SUPER_FORTE",
-    {expiresIn:"1d"}
-  );
+  const user = await Usuario.findOne({ usuario });
 
-  res.json({token, nivel:user.nivel});
+  if (!user) {
+    return res.status(404).json({ erro: "Usuário não encontrado" });
+  }
+
+  res.json({ mensagem: "Procure o administrador para redefinir sua senha." });
 });
 
-/* ================= ORDENS ================= */
 
-app.post("/ordens", auth, async (req,res)=>{
-  const nova = await Ordem.create(req.body);
-  res.json(nova);
+// ==================
+// SERVIR INDEX
+// ==================
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-app.get("/ordens", auth, async (req,res)=>{
-  const lista = await Ordem.find();
-  res.json(lista);
-});
 
-app.put("/ordens/:id", auth, async (req,res)=>{
-  const ordem = await Ordem.findByIdAndUpdate(req.params.id, req.body, {new:true});
-  res.json(ordem);
-});
-
-app.delete("/ordens/:id", auth, somenteAdmin, async (req,res)=>{
-  await Ordem.findByIdAndDelete(req.params.id);
-  res.json({mensagem:"Ordem excluída"});
-});
-
-/* ================= GERAR PDF DA OS ================= */
-
-app.get("/ordens/:id/pdf", auth, async (req,res)=>{
-  const ordem = await Ordem.findById(req.params.id);
-  if(!ordem) return res.status(404).json({erro:"OS não encontrada"});
-
-  const doc = new PDFDocument();
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename=OS-${ordem._id}.pdf`);
-
-  doc.pipe(res);
-
-  doc.fontSize(20).text("HS CELL IMPORTS", {align:"center"});
-  doc.moveDown();
-
-  doc.fontSize(14).text(`Ordem de Serviço`);
-  doc.moveDown();
-
-  doc.text(`Cliente: ${ordem.cliente}`);
-  doc.text(`Aparelho: ${ordem.aparelho}`);
-  doc.text(`Problema: ${ordem.problema}`);
-  doc.text(`Valor: R$ ${ordem.valorServico}`);
-  doc.text(`Garantia: ${ordem.garantia}`);
-  doc.text(`Data: ${new Date(ordem.data).toLocaleDateString()}`);
-
-  doc.moveDown();
-  doc.text("Assinatura do Cliente: __________________________");
-
-  doc.end();
-});
-
-/* ================= SERVIR FRONT ================= */
-
-app.use(express.static(path.join(__dirname,"../public")));
-app.get("*",(req,res)=>{
-  res.sendFile(path.join(__dirname,"../public/index.html"));
-});
+// ==================
+// INICIAR SERVIDOR
+// ==================
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log("Servidor rodando"));
+
+app.listen(PORT, () => {
+  console.log("Servidor rodando na porta " + PORT);
+});
