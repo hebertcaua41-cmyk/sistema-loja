@@ -1,106 +1,120 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const cors = require("cors");
 const path = require("path");
 
-const Usuario = require("./models/Usuario");
-const OS = require("./models/OS");
-const Produto = require("./models/Produto");
-const Despesa = require("./models/Despesa");
-const Venda = require("./models/Venda");
-const auth = require("./middleware/auth");
-
 const app = express();
-app.use(express.json());
-app.use(cors());
-app.use(express.static(path.join(__dirname, "../public")));
 
-mongoose.connect(process.env.MONGO_URI)
-.then(async () => {
-  console.log("Mongo conectado");
-  await criarAdmin();
+/* =========================
+   CONFIG
+========================= */
+
+const PORT = process.env.PORT || 10000;
+const MONGO_URI = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET || "hs_cell_super_secret";
+
+/* =========================
+   MIDDLEWARES
+========================= */
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
+
+/* =========================
+   CONEXÃO MONGO
+========================= */
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("🔥 MongoDB conectado"))
+  .catch(err => console.log("❌ Erro Mongo:", err));
+
+/* =========================
+   MODEL USER
+========================= */
+
+const UserSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String,
+  role: { type: String, default: "admin" }
 });
 
-async function criarAdmin() {
-  const existe = await Usuario.findOne({ usuario: "admin" });
-  if (!existe) {
+const User = mongoose.model("User", UserSchema);
+
+/* =========================
+   CRIAR ADMIN AUTOMÁTICO
+========================= */
+
+async function createAdmin() {
+  const exists = await User.findOne({ username: "admin" });
+
+  if (!exists) {
     const hash = await bcrypt.hash("123456", 10);
-    await Usuario.create({ usuario: "admin", senha: hash, nivel: "admin" });
-    console.log("Admin criado");
+
+    await User.create({
+      username: "admin",
+      password: hash,
+      role: "admin"
+    });
+
+    console.log("✅ Admin criado");
+    console.log("Usuário: admin");
+    console.log("Senha: 123456");
+  } else {
+    console.log("ℹ️ Admin já existe");
   }
 }
 
+createAdmin();
+
+/* =========================
+   ROTAS
+========================= */
+
+// TESTE BACKEND
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
+});
+
+// ROTA RAIZ (resolve Cannot GET /)
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 // LOGIN
 app.post("/login", async (req, res) => {
-  const { usuario, senha } = req.body;
-  const user = await Usuario.findOne({ usuario });
-  if (!user) return res.status(400).json({ erro: "Usuário não encontrado" });
+  try {
+    const { username, password } = req.body;
 
-  const valido = await bcrypt.compare(senha, user.senha);
-  if (!valido) return res.status(400).json({ erro: "Senha inválida" });
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(400).json({ message: "Usuário não encontrado" });
+    }
 
-  const token = jwt.sign({ id: user._id, nivel: user.nivel }, "segredo_super");
-  res.json({ token });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(400).json({ message: "Senha inválida" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+
+  } catch (err) {
+    res.status(500).json({ message: "Erro no servidor" });
+  }
 });
 
-// ================= OS =================
-app.post("/os", auth, async (req, res) => {
-  const nova = await OS.create(req.body);
-  res.json(nova);
-});
+/* =========================
+   START SERVER
+========================= */
 
-app.get("/os", auth, async (req, res) => {
-  const lista = await OS.find();
-  res.json(lista);
-});
-
-app.put("/os/:id", auth, async (req, res) => {
-  const atualizar = await OS.findByIdAndUpdate(req.params.id, req.body);
-  res.json(atualizar);
-});
-
-app.delete("/os/:id", auth, async (req, res) => {
-  await OS.findByIdAndDelete(req.params.id);
-  res.json({ ok: true });
-});
-
-// ================= ESTOQUE =================
-app.post("/produto", auth, async (req, res) => {
-  const novo = await Produto.create(req.body);
-  res.json(novo);
-});
-
-app.get("/produto", auth, async (req, res) => {
-  const lista = await Produto.find();
-  res.json(lista);
-});
-
-// ================= DESPESAS =================
-app.post("/despesa", auth, async (req, res) => {
-  const nova = await Despesa.create(req.body);
-  res.json(nova);
-});
-
-app.get("/despesa", auth, async (req, res) => {
-  const lista = await Despesa.find();
-  res.json(lista);
-});
-
-// ================= VENDAS =================
-app.post("/venda", auth, async (req, res) => {
-  const nova = await Venda.create(req.body);
-  res.json(nova);
-});
-
-app.get("/relatorio", auth, async (req, res) => {
-  const vendas = await Venda.find();
-  const total = vendas.reduce((soma, v) => soma + v.valor, 0);
-  res.json({ total });
-});
-
-const PORT = process.env.PORT;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Servidor rodando na porta " + PORT);
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });

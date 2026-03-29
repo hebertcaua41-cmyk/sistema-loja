@@ -1,75 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>HS Cell Imports - Login</title>
-  <style>
-    body{
-      background:#0f172a;
-      color:white;
-      font-family:Arial;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-    }
-    .box{
-      background:#1e293b;
-      padding:30px;
-      border-radius:10px;
-      width:300px;
-      text-align:center;
-    }
-    input{
-      width:100%;
-      padding:10px;
-      margin:10px 0;
-      border:none;
-      border-radius:5px;
-    }
-    button{
-      width:100%;
-      padding:10px;
-      background:#22c55e;
-      border:none;
-      border-radius:5px;
-      color:white;
-      font-weight:bold;
-      cursor:pointer;
-    }
-  </style>
+  <title>HS Cell Imports</title>
 </head>
 <body>
-
-<div class="box">
-  <h2>HS CELL IMPORTS</h2>
-  <input type="text" id="usuario" placeholder="Usuário">
-  <input type="password" id="senha" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
-  <p id="erro" style="color:red;"></p>
-</div>
-
-<script>
-async function login(){
-  const usuario = document.getElementById("usuario").value;
-  const senha = document.getElementById("senha").value;
-
-  const res = await fetch("/login",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({usuario,senha})
-  });
-
-  const data = await res.json();
-
-  if(data.token){
-    localStorage.setItem("token",data.token);
-    window.location.href="/sistema.html";
-  }else{
-    document.getElementById("erro").innerText=data.erro;
-  }
-}
-</script>
-
+  <h1>🔥 HS Cell Imports Online 🚀</h1>
 </body>
 </html>
