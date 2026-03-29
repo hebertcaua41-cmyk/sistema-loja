@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const PDFDocument = require("pdfkit");
 const path = require("path");
 
 const app = express();
@@ -50,7 +51,7 @@ const Estoque = mongoose.model("Estoque", EstoqueSchema);
 const Ordem = mongoose.model("Ordem", OrdemSchema);
 const Venda = mongoose.model("Venda", VendaSchema);
 
-/* ================= MIDDLEWARE ================= */
+/* ================= AUTH ================= */
 
 function auth(req,res,next){
   const authHeader = req.headers.authorization;
@@ -69,17 +70,15 @@ function auth(req,res,next){
 
 function somenteAdmin(req,res,next){
   if(req.user.nivel !== "admin"){
-    return res.status(403).json({erro:"Acesso apenas para admin"});
+    return res.status(403).json({erro:"Apenas admin"});
   }
   next();
 }
 
-/* ================= AUTH ================= */
+/* ================= LOGIN ================= */
 
-// Registrar usuário
 app.post("/register", async (req,res)=>{
   const {usuario, senha, nivel} = req.body;
-
   const hash = await bcrypt.hash(senha, 10);
 
   const novo = await Usuario.create({
@@ -91,7 +90,6 @@ app.post("/register", async (req,res)=>{
   res.json(novo);
 });
 
-// Login
 app.post("/login", async (req,res)=>{
   const {usuario, senha} = req.body;
 
@@ -108,54 +106,6 @@ app.post("/login", async (req,res)=>{
   );
 
   res.json({token, nivel:user.nivel});
-});
-
-/* ================= RECUPERAÇÃO ================= */
-
-app.post("/recuperar", async (req,res)=>{
-  const {usuario} = req.body;
-
-  const user = await Usuario.findOne({usuario});
-  if(!user) return res.json({erro:"Usuário não encontrado"});
-
-  const token = Math.random().toString(36).substring(2);
-
-  user.resetToken = token;
-  user.resetExpira = Date.now() + 3600000;
-  await user.save();
-
-  res.json({mensagem:"Token gerado", token});
-});
-
-app.post("/resetar", async (req,res)=>{
-  const {token, novaSenha} = req.body;
-
-  const user = await Usuario.findOne({
-    resetToken: token,
-    resetExpira: {$gt: Date.now()}
-  });
-
-  if(!user) return res.json({erro:"Token inválido ou expirado"});
-
-  user.senha = await bcrypt.hash(novaSenha, 10);
-  user.resetToken = null;
-  user.resetExpira = null;
-
-  await user.save();
-
-  res.json({mensagem:"Senha atualizada"});
-});
-
-/* ================= ESTOQUE ================= */
-
-app.post("/estoque", auth, async (req,res)=>{
-  const novo = await Estoque.create(req.body);
-  res.json(novo);
-});
-
-app.get("/estoque", auth, async (req,res)=>{
-  const lista = await Estoque.find();
-  res.json(lista);
 });
 
 /* ================= ORDENS ================= */
@@ -175,39 +125,41 @@ app.put("/ordens/:id", auth, async (req,res)=>{
   res.json(ordem);
 });
 
-// Somente admin pode excluir
 app.delete("/ordens/:id", auth, somenteAdmin, async (req,res)=>{
   await Ordem.findByIdAndDelete(req.params.id);
   res.json({mensagem:"Ordem excluída"});
 });
 
-/* ================= VENDAS ================= */
+/* ================= GERAR PDF DA OS ================= */
 
-app.post("/vendas", auth, async (req,res)=>{
-  const {cliente,produto,quantidade,valorUnitario} = req.body;
+app.get("/ordens/:id/pdf", auth, async (req,res)=>{
+  const ordem = await Ordem.findById(req.params.id);
+  if(!ordem) return res.status(404).json({erro:"OS não encontrada"});
 
-  const estoque = await Estoque.findOne({nome:produto});
-  if(!estoque || estoque.quantidade < quantidade){
-    return res.json({erro:"Estoque insuficiente"});
-  }
+  const doc = new PDFDocument();
 
-  estoque.quantidade -= quantidade;
-  await estoque.save();
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename=OS-${ordem._id}.pdf`);
 
-  const venda = await Venda.create({
-    cliente,
-    produto,
-    quantidade,
-    valorUnitario,
-    total: quantidade * valorUnitario
-  });
+  doc.pipe(res);
 
-  res.json(venda);
-});
+  doc.fontSize(20).text("HS CELL IMPORTS", {align:"center"});
+  doc.moveDown();
 
-app.get("/vendas", auth, async (req,res)=>{
-  const lista = await Venda.find();
-  res.json(lista);
+  doc.fontSize(14).text(`Ordem de Serviço`);
+  doc.moveDown();
+
+  doc.text(`Cliente: ${ordem.cliente}`);
+  doc.text(`Aparelho: ${ordem.aparelho}`);
+  doc.text(`Problema: ${ordem.problema}`);
+  doc.text(`Valor: R$ ${ordem.valorServico}`);
+  doc.text(`Garantia: ${ordem.garantia}`);
+  doc.text(`Data: ${new Date(ordem.data).toLocaleDateString()}`);
+
+  doc.moveDown();
+  doc.text("Assinatura do Cliente: __________________________");
+
+  doc.end();
 });
 
 /* ================= SERVIR FRONT ================= */
@@ -216,8 +168,6 @@ app.use(express.static(path.join(__dirname,"../public")));
 app.get("*",(req,res)=>{
   res.sendFile(path.join(__dirname,"../public/index.html"));
 });
-
-/* ================= START ================= */
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=> console.log("Servidor rodando"));

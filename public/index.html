@@ -3,32 +3,78 @@
 <head>
 <meta charset="UTF-8">
 <title>HS CELL IMPORTS</title>
+
 <style>
-body{font-family:Arial;background:#0f172a;color:white;margin:0;padding:20px}
+body{
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  margin:0;
+  padding:20px;
+}
 h1{text-align:center;color:#38bdf8}
-.menu{display:flex;gap:10px;margin-bottom:20px}
-.menu button{flex:1;padding:10px;background:#1e293b;color:white;border:none;border-radius:8px}
-.card{display:none;background:#1e293b;padding:20px;border-radius:12px;margin-bottom:20px}
-input,button{width:100%;padding:10px;margin-bottom:10px;border:none;border-radius:8px}
+.menu{display:flex;gap:8px;margin-bottom:20px}
+.menu button{
+  flex:1;
+  padding:10px;
+  background:#1e293b;
+  border:none;
+  color:white;
+  border-radius:8px;
+}
+.card{
+  display:none;
+  background:#1e293b;
+  padding:20px;
+  border-radius:12px;
+  margin-bottom:20px;
+}
+input,button{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border:none;
+  border-radius:8px;
+}
 input{background:#334155;color:white}
 button{background:#22c55e;color:white;font-weight:bold}
-.list-item{background:#334155;padding:10px;border-radius:8px;margin-bottom:8px}
-.meta{font-size:20px;margin-bottom:10px}
+.list-item{
+  background:#334155;
+  padding:10px;
+  border-radius:8px;
+  margin-bottom:8px;
+}
+.logout{
+  background:#ef4444 !important;
+}
 </style>
 </head>
 <body>
 
 <h1>📱 HS CELL IMPORTS</h1>
 
+<!-- LOGIN -->
+<div id="loginScreen">
+  <h2>Login</h2>
+  <input id="usuarioLogin" placeholder="Usuário">
+  <input id="senhaLogin" type="password" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+  <button onclick="recuperar()">Esqueci a senha</button>
+</div>
+
+<!-- SISTEMA -->
+<div id="sistema" style="display:none">
+
 <div class="menu">
 <button onclick="mostrar('dashboard')">🏠 Início</button>
 <button onclick="mostrar('estoque')">📦 Estoque</button>
 <button onclick="mostrar('ordens')">🛠 OS</button>
 <button onclick="mostrar('vendas')">🛒 Vendas</button>
+<button class="logout" onclick="logout()">Sair</button>
 </div>
 
 <div class="card" id="dashboard">
-<div class="meta">Meta mensal: R$ 5.000</div>
+<h2>Painel Financeiro</h2>
 <div id="totalMes"></div>
 </div>
 
@@ -47,7 +93,7 @@ button{background:#22c55e;color:white;font-weight:bold}
 <input id="aparelho" placeholder="Aparelho">
 <input id="problema" placeholder="Problema">
 <input id="valorServico" type="number" placeholder="Valor">
-<input id="garantia" placeholder="Garantia (ex: 90 dias)">
+<input id="garantia" placeholder="Garantia">
 <button onclick="addOrdem()">Cadastrar</button>
 <div id="listaOrdens"></div>
 </div>
@@ -62,117 +108,147 @@ button{background:#22c55e;color:white;font-weight:bold}
 <div id="listaVendas"></div>
 </div>
 
+</div>
+
 <script>
+
 const API = window.location.origin;
+let TOKEN = localStorage.getItem("token");
+let NIVEL = localStorage.getItem("nivel");
 
+/* AUTO LOGIN */
+if(TOKEN){
+  iniciarSistema();
+}
+
+function iniciarSistema(){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("sistema").style.display="block";
+  mostrar("dashboard");
+  carregarTudo();
+}
+
+/* LOGIN */
+async function login(){
+  const r = await fetch(`${API}/login`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      usuario:usuarioLogin.value,
+      senha:senhaLogin.value
+    })
+  });
+
+  const d = await r.json();
+
+  if(d.token){
+    TOKEN = d.token;
+    NIVEL = d.nivel;
+    localStorage.setItem("token",TOKEN);
+    localStorage.setItem("nivel",NIVEL);
+    iniciarSistema();
+  }else{
+    alert(d.erro);
+  }
+}
+
+/* LOGOUT */
+function logout(){
+  localStorage.clear();
+  location.reload();
+}
+
+/* MENU */
 function mostrar(id){
- document.querySelectorAll(".card").forEach(c=>c.style.display="none");
- document.getElementById(id).style.display="block";
+  document.querySelectorAll(".card").forEach(c=>c.style.display="none");
+  document.getElementById(id).style.display="block";
 }
-mostrar("dashboard");
 
-/* ESTOQUE */
+/* RECUPERAR SENHA */
+async function recuperar(){
+  const usuario = prompt("Digite seu usuário:");
+  const r = await fetch(`${API}/recuperar`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({usuario})
+  });
+  const d = await r.json();
+
+  if(d.token){
+    alert("Token: "+d.token);
+    const token = prompt("Digite o token:");
+    const novaSenha = prompt("Nova senha:");
+    await fetch(`${API}/resetar`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({token,novaSenha})
+    });
+    alert("Senha alterada!");
+  }else{
+    alert(d.erro);
+  }
+}
+
+/* HEADER AUTH */
+function authHeader(){
+  return {
+    "Content-Type":"application/json",
+    "Authorization":"Bearer "+TOKEN
+  }
+}
+
+/* ================= ESTOQUE ================= */
+
 async function addEstoque(){
- await fetch(`${API}/estoque`,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-   nome:nome.value,
-   quantidade:Number(quantidade.value),
-   custoUnitario:Number(custo.value)
-  })
- });
- carregarEstoque();
+  await fetch(`${API}/estoque`,{
+    method:"POST",
+    headers:authHeader(),
+    body:JSON.stringify({
+      nome:nome.value,
+      quantidade:Number(quantidade.value),
+      custoUnitario:Number(custo.value)
+    })
+  });
+  carregarEstoque();
 }
+
 async function carregarEstoque(){
- const r=await fetch(`${API}/estoque`);
- const d=await r.json();
- listaEstoque.innerHTML="";
- d.forEach(p=>{
-  listaEstoque.innerHTML+=`<div class="list-item">${p.nome} - Qtd: ${p.quantidade}</div>`;
- });
+  const r=await fetch(`${API}/estoque`,{headers:authHeader()});
+  const d=await r.json();
+  listaEstoque.innerHTML="";
+  d.forEach(p=>{
+    listaEstoque.innerHTML+=`
+      <div class="list-item">
+        ${p.nome} - Qtd: ${p.quantidade}
+      </div>`;
+  });
 }
 
-/* ORDEM */
+/* ================= ORDENS ================= */
+
 async function addOrdem(){
- await fetch(`${API}/ordens`,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-   cliente:cliente.value,
-   aparelho:aparelho.value,
-   problema:problema.value,
-   valorServico:Number(valorServico.value),
-   garantia:garantia.value
-  })
- });
- carregarOrdens();
-}
-async function carregarOrdens(){
- const r=await fetch(`${API}/ordens`);
- const d=await r.json();
- listaOrdens.innerHTML="";
- d.forEach(o=>{
-  listaOrdens.innerHTML+=`
-  <div class="list-item">
-  ${o.cliente} - ${o.aparelho} | R$ ${o.valorServico}
-  <br>
-  <button onclick="editar('${o._id}')">Editar</button>
-  <button onclick="excluir('${o._id}')">Excluir</button>
-  </div>`;
- });
-}
-
-/* EDITAR/EXCLUIR */
-async function editar(id){
- const novo=prompt("Novo valor:");
- if(!novo) return;
- await fetch(`${API}/ordens/${id}`,{
-  method:"PUT",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({valorServico:Number(novo)})
- });
- carregarOrdens();
-}
-async function excluir(id){
- if(confirm("Excluir OS?")){
-  await fetch(`${API}/ordens/${id}`,{method:"DELETE"});
+  await fetch(`${API}/ordens`,{
+    method:"POST",
+    headers:authHeader(),
+    body:JSON.stringify({
+      cliente:cliente.value,
+      aparelho:aparelho.value,
+      problema:problema.value,
+      valorServico:Number(valorServico.value),
+      garantia:garantia.value
+    })
+  });
   carregarOrdens();
- }
 }
 
-/* VENDAS */
-async function addVenda(){
- const r=await fetch(`${API}/vendas`,{
-  method:"POST",
-  headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({
-   cliente:clienteVenda.value,
-   produto:produto.value,
-   quantidade:Number(qtdVenda.value),
-   valorUnitario:Number(valorVenda.value)
-  })
- });
- const d=await r.json();
- if(d.erro){alert(d.erro);return;}
- carregarVendas();
-}
-async function carregarVendas(){
- const r=await fetch(`${API}/vendas`);
- const d=await r.json();
- listaVendas.innerHTML="";
- let total=0;
- d.forEach(v=>{
-  total+=v.total;
-  listaVendas.innerHTML+=`<div class="list-item">${v.cliente} - R$ ${v.total}</div>`;
- });
- totalMes.innerHTML="Total do mês: R$ "+total;
-}
-
-carregarEstoque();
-carregarOrdens();
-carregarVendas();
-</script>
-
-</body>
-</html>
+async function carregarOrdens(){
+  const r=await fetch(`${API}/ordens`,{headers:authHeader()});
+  const d=await r.json();
+  listaOrdens.innerHTML="";
+  d.forEach(o=>{
+    listaOrdens.innerHTML+=`
+      <div class="list-item">
+        ${o.cliente} - ${o.aparelho} | R$ ${o.valorServico}
+        <br>
+        <button onclick="editar('${o._id}')">Editar</button>
+        ${NIVEL==="admin" ? `<button onclick="excluir('${o._id}')">Excluir

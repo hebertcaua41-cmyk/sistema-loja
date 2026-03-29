@@ -1,6 +1,6 @@
 {
   "name": "hs-cell-imports",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js"
@@ -10,6 +10,7 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.6.0"
+    "mongoose": "^7.6.0",
+    "pdfkit": "^0.14.0"
   }
 }
