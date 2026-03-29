@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>HS CELL IMPORTS - Sistema</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #111;
+      color: white;
+      text-align: center;
+      padding: 40px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .sair {
+      background: red;
+      color: white;
+    }
+
+    .menu {
+      background: #00c853;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>HS CELL IMPORTS</h1>
+  <h2>Sistema Interno</h2>
+
+  <button class="menu" onclick="alert('Abrir Ordens de Serviço')">
+    📋 Ordens de Serviço
+  </button>
+
+  <button class="menu" onclick="alert('Abrir Estoque')">
+    📦 Estoque
+  </button>
+
+  <button class="menu" onclick="alert('Abrir Despesas')">
+    💰 Despesas
+  </button>
+
+  <br><br>
+
+  <button class="sair" onclick="logout()">
+    🚪 Sair
+  </button>
+
+  <script>
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "/";
+    }
+  </script>
+
+</body>
+</html>
