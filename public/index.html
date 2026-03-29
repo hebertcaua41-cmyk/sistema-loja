@@ -7,50 +7,71 @@
 
 <style>
 body{
-  font-family: Arial;
+  margin:0;
+  font-family:Arial;
   background:#0f172a;
   color:white;
-  margin:0;
-  padding:0;
+}
+
+header{
+  background:#1e293b;
+  padding:15px;
+  text-align:center;
+  font-size:20px;
+  font-weight:bold;
+}
+
+nav{
+  display:flex;
+  justify-content:space-around;
+  background:#111827;
+  padding:10px;
+}
+
+nav button{
+  background:none;
+  border:none;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
 }
 
 .container{
-  max-width:900px;
-  margin:auto;
   padding:20px;
 }
 
 .card{
   background:#1e293b;
-  padding:20px;
-  border-radius:10px;
+  padding:15px;
+  border-radius:8px;
   margin-bottom:20px;
 }
 
 input, select{
   width:100%;
-  padding:10px;
+  padding:8px;
   margin:5px 0;
-  border-radius:5px;
   border:none;
+  border-radius:5px;
 }
 
-button{
-  padding:10px;
+button.action{
+  background:#22c55e;
+  color:white;
+  padding:8px;
   border:none;
   border-radius:5px;
   cursor:pointer;
-  font-weight:bold;
+  margin-top:5px;
 }
 
-.btn{
-  background:#22c55e;
-  color:white;
-}
-
-.btn-danger{
+button.delete{
   background:#ef4444;
   color:white;
+  padding:5px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
 }
 
 .hidden{
@@ -60,80 +81,122 @@ button{
 </head>
 <body>
 
-<div class="container">
+<header>🔥 HS Cell Imports - Sistema</header>
 
-<h1>🔥 HS Cell Imports</h1>
-
-<!-- LOGIN -->
-<div id="loginCard" class="card">
-  <h2>Login</h2>
-  <input id="username" placeholder="Usuário">
-  <input id="password" type="password" placeholder="Senha">
-  <button class="btn" onclick="login()">Entrar</button>
+<div id="login" class="container">
+  <div class="card">
+    <h3>Login</h3>
+    <input id="username" placeholder="Usuário">
+    <input id="password" type="password" placeholder="Senha">
+    <button class="action" onclick="login()">Entrar</button>
+  </div>
 </div>
 
-<!-- SISTEMA -->
 <div id="sistema" class="hidden">
 
-  <div class="card">
-    <h2>📊 Dashboard</h2>
-    <p>Total do mês: R$ <span id="totalMes">0</span></p>
-    <p>Meta: R$ 5000</p>
-    <p>Falta: R$ <span id="falta">0</span></p>
-  </div>
+<nav>
+  <button onclick="mostrar('dashboard')">Dashboard</button>
+  <button onclick="mostrar('os')">OS</button>
+  <button onclick="mostrar('estoque')">Estoque</button>
+  <button onclick="mostrar('despesas')">Despesas</button>
+  <button onclick="logout()">Sair</button>
+</nav>
 
+<div class="container">
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="secao">
   <div class="card">
-    <h2>➕ Nova Ordem de Serviço</h2>
+    <h3>📊 Dashboard</h3>
+    <p>Vendas mês: R$ <span id="vendas">0</span></p>
+    <p>Despesas mês: R$ <span id="despesasTotal">0</span></p>
+    <p>Lucro: R$ <span id="lucro">0</span></p>
+    <p>Meta: R$ 5000</p>
+  </div>
+</div>
+
+<!-- ORDEM SERVIÇO -->
+<div id="os" class="secao hidden">
+  <div class="card">
+    <h3>Nova OS</h3>
     <input id="cliente" placeholder="Cliente">
     <input id="telefone" placeholder="Telefone">
     <input id="aparelho" placeholder="Aparelho">
     <input id="defeito" placeholder="Defeito">
     <input id="valor" type="number" placeholder="Valor">
-    <input id="garantia" placeholder="Garantia (ex: 30 dias)">
-    <button class="btn" onclick="criarOS()">Salvar OS</button>
+    <input id="garantia" placeholder="Garantia">
+    <button class="action" onclick="criarOS()">Salvar</button>
   </div>
-
-  <div class="card">
-    <h2>📋 Ordens de Serviço</h2>
-    <div id="listaOS"></div>
-  </div>
-
+  <div id="listaOS"></div>
 </div>
 
+<!-- ESTOQUE -->
+<div id="estoque" class="secao hidden">
+  <div class="card">
+    <h3>Novo Produto</h3>
+    <input id="nomeProduto" placeholder="Nome">
+    <input id="quantidade" type="number" placeholder="Quantidade">
+    <input id="precoVenda" type="number" placeholder="Preço Venda">
+    <button class="action" onclick="criarProduto()">Salvar</button>
+  </div>
+  <div id="listaEstoque"></div>
+</div>
+
+<!-- DESPESAS -->
+<div id="despesas" class="secao hidden">
+  <div class="card">
+    <h3>Nova Despesa</h3>
+    <input id="descDespesa" placeholder="Descrição">
+    <input id="valorDespesa" type="number" placeholder="Valor">
+    <button class="action" onclick="criarDespesa()">Salvar</button>
+  </div>
+</div>
+
+</div>
 </div>
 
 <script>
 
-let token = "";
+function mostrar(secao){
+  document.querySelectorAll(".secao").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(secao).classList.remove("hidden");
+}
+
+function logout(){
+  location.reload();
+}
 
 async function login(){
-  const username = document.getElementById("username").value;
-  const password = document.getElementById("password").value;
-
   const res = await fetch("/login",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ username, password })
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      username:username.value,
+      password:password.value
+    })
   });
 
   const data = await res.json();
 
   if(data.token){
-    token = data.token;
-    document.getElementById("loginCard").classList.add("hidden");
+    loginDiv = document.getElementById("login");
+    loginDiv.classList.add("hidden");
     document.getElementById("sistema").classList.remove("hidden");
-    carregarOS();
     carregarDashboard();
-  }else{
+    carregarOS();
+    carregarEstoque();
+  } else {
     alert(data.message);
   }
 }
 
+/* ================= OS ================= */
+
 async function criarOS(){
   await fetch("/os",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
       cliente:cliente.value,
       telefone:telefone.value,
       aparelho:aparelho.value,
@@ -142,8 +205,6 @@ async function criarOS(){
       garantia:garantia.value
     })
   });
-
-  alert("OS criada!");
   carregarOS();
   carregarDashboard();
 }
@@ -151,36 +212,95 @@ async function criarOS(){
 async function carregarOS(){
   const res = await fetch("/os");
   const lista = await res.json();
-
   const div = document.getElementById("listaOS");
-  div.innerHTML = "";
-
+  div.innerHTML="";
   lista.forEach(os=>{
-    div.innerHTML += `
-      <div style="border-bottom:1px solid gray;padding:10px;">
+    div.innerHTML+=`
+      <div class="card">
         <b>${os.cliente}</b> - ${os.aparelho}
         <br>R$ ${os.valor}
-        <br>Status: ${os.status}
-        <br>Garantia: ${os.garantia}
         <br>
-        <button class="btn-danger" onclick="excluirOS('${os._id}')">Excluir</button>
+        <button class="delete" onclick="window.open('/os/${os._id}/pdf')">PDF</button>
       </div>
     `;
   });
 }
 
-async function excluirOS(id){
-  await fetch("/os/"+id,{ method:"DELETE" });
-  carregarOS();
+/* ================= ESTOQUE ================= */
+
+async function criarProduto(){
+  await fetch("/estoque",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      nome:nomeProduto.value,
+      quantidade:Number(quantidade.value),
+      precoVenda:Number(precoVenda.value)
+    })
+  });
+  carregarEstoque();
+}
+
+async function carregarEstoque(){
+  const res = await fetch("/estoque");
+  const lista = await res.json();
+  const div = document.getElementById("listaEstoque");
+  div.innerHTML="";
+  lista.forEach(p=>{
+    div.innerHTML+=`
+      <div class="card">
+        ${p.nome} - Estoque: ${p.quantidade}
+        <br>R$ ${p.precoVenda}
+        <br>
+        <button class="action" onclick="vender('${p._id}', ${p.quantidade})">Vender 1</button>
+      </div>
+    `;
+  });
+}
+
+/* ===== BAIXA AUTOMÁTICA DE ESTOQUE ===== */
+
+async function vender(id, qtdAtual){
+  if(qtdAtual <= 0){
+    alert("Sem estoque!");
+    return;
+  }
+
+  await fetch("/estoque/"+id,{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      quantidade:qtdAtual - 1
+    })
+  });
+
+  carregarEstoque();
+  alert("Venda realizada!");
+}
+
+/* ================= DESPESAS ================= */
+
+async function criarDespesa(){
+  await fetch("/despesas",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      descricao:descDespesa.value,
+      valor:Number(valorDespesa.value)
+    })
+  });
   carregarDashboard();
 }
+
+/* ================= DASHBOARD ================= */
 
 async function carregarDashboard(){
   const res = await fetch("/dashboard");
   const data = await res.json();
 
-  document.getElementById("totalMes").innerText = data.totalMes;
-  document.getElementById("falta").innerText = data.falta;
+  document.getElementById("vendas").innerText = data.vendas;
+  document.getElementById("despesasTotal").innerText = data.despesas;
+  document.getElementById("lucro").innerText = data.lucro;
 }
 
 </script>
