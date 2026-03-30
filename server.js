@@ -131,3 +131,9 @@ app.get("/vendas", async (req, res) => {
   const lista = await Venda.find().sort({ data: -1 });
   res.json(lista);
 });
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(Servidor rodando na porta ${PORT});
+});
