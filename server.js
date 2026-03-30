@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -13,7 +14,7 @@ app.use(cors());
 app.use(express.static("public"));
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB conectado"))
+  .then(() => console.log("✅ MongoDB conectado"))
   .catch(err => console.log(err));
 
 /* ================= MODELS ================= */
@@ -58,16 +59,14 @@ const Estoque = mongoose.model("Estoque", estoqueSchema);
 const Venda = mongoose.model("Venda", vendaSchema);
 const Despesa = mongoose.model("Despesa", despesaSchema);
 
-/* ================= PROTEÇÃO ADMIN ================= */
+/* ================= FUNÇÃO ADMIN ================= */
 
 function validarAdmin(req, res) {
   const { senhaAdmin } = req.body;
-
   if (!senhaAdmin || senhaAdmin !== process.env.ADMIN_PASSWORD) {
     res.status(403).json({ erro: "Senha admin incorreta" });
     return false;
   }
-
   return true;
 }
 
@@ -85,7 +84,6 @@ app.get("/os", async (req, res) => {
 
 app.delete("/os/:id", async (req, res) => {
   if (!validarAdmin(req, res)) return;
-
   await OS.findByIdAndUpdate(req.params.id, { excluido: true });
   res.json({ ok: true });
 });
@@ -93,25 +91,32 @@ app.delete("/os/:id", async (req, res) => {
 /* ================= PDF OS ================= */
 
 app.get("/os/:id/pdf", async (req, res) => {
-  const os = await OS.findById(req.params.id);
-  if (!os) return res.status(404).send("OS não encontrada");
+  try {
+    const os = await OS.findById(req.params.id);
+    if (!os) return res.status(404).send("OS não encontrada");
 
-  const doc = new PDFDocument();
-  res.setHeader("Content-Type", "application/pdf");
-  doc.pipe(res);
+    const doc = new PDFDocument();
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=OS-${os._id}.pdf`);
 
-  doc.fontSize(18).text("HS Cell Imports", { align: "center" });
-  doc.moveDown();
-  doc.text(`Cliente: ${os.cliente}`);
-  doc.text(`Telefone: ${os.telefone}`);
-  doc.text(`Aparelho: ${os.aparelho}`);
-  doc.text(`Defeito: ${os.defeito}`);
-  doc.text(`Valor: R$ ${os.valor}`);
-  doc.text(`Garantia: ${os.garantia}`);
-  doc.text(`Status: ${os.status}`);
-  doc.text(`Data: ${os.data}`);
+    doc.pipe(res);
 
-  doc.end();
+    doc.fontSize(20).text("HS CELL IMPORTS", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(14).text(`Cliente: ${os.cliente}`);
+    doc.text(`Telefone: ${os.telefone}`);
+    doc.text(`Aparelho: ${os.aparelho}`);
+    doc.text(`Defeito: ${os.defeito}`);
+    doc.text(`Valor: R$ ${os.valor}`);
+    doc.text(`Garantia: ${os.garantia} dias`);
+    doc.text(`Status: ${os.status}`);
+    doc.text(`Data: ${new Date(os.data).toLocaleDateString()}`);
+
+    doc.end();
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Erro ao gerar PDF");
+  }
 });
 
 /* ================= ESTOQUE ================= */
@@ -126,27 +131,15 @@ app.get("/estoque", async (req, res) => {
   res.json(lista);
 });
 
-app.delete("/estoque/:id", async (req, res) => {
-  if (!validarAdmin(req, res)) return;
-
-  await Estoque.findByIdAndUpdate(req.params.id, { excluido: true });
-  res.json({ ok: true });
-});
-
 /* ================= VENDAS ================= */
 
 app.post("/venda", async (req, res) => {
   const { cliente, produto, quantidade } = req.body;
 
   const item = await Estoque.findOne({ produto, excluido: false });
-
-  if (!item) {
-    return res.status(400).json({ erro: "Produto não encontrado" });
-  }
-
-  if (item.quantidade < quantidade) {
+  if (!item) return res.status(400).json({ erro: "Produto não encontrado" });
+  if (item.quantidade < quantidade)
     return res.status(400).json({ erro: "Estoque insuficiente" });
-  }
 
   item.quantidade -= quantidade;
   await item.save();
@@ -168,13 +161,6 @@ app.get("/vendas", async (req, res) => {
   res.json(lista);
 });
 
-app.delete("/vendas/:id", async (req, res) => {
-  if (!validarAdmin(req, res)) return;
-
-  await Venda.findByIdAndUpdate(req.params.id, { excluido: true });
-  res.json({ ok: true });
-});
-
 /* ================= DESPESAS ================= */
 
 app.post("/despesas", async (req, res) => {
@@ -187,11 +173,28 @@ app.get("/despesas", async (req, res) => {
   res.json(lista);
 });
 
-app.delete("/despesas/:id", async (req, res) => {
-  if (!validarAdmin(req, res)) return;
+/* ================= DASHBOARD ================= */
 
-  await Despesa.findByIdAndUpdate(req.params.id, { excluido: true });
-  res.json({ ok: true });
+app.get("/dashboard", async (req, res) => {
+  const totalOS = await OS.countDocuments({ excluido: false });
+  const totalVendas = await Venda.aggregate([
+    { $match: { excluido: false } },
+    { $group: { _id: null, total: { $sum: "$total" } } }
+  ]);
+
+  const totalDespesas = await Despesa.aggregate([
+    { $match: { excluido: false } },
+    { $group: { _id: null, total: { $sum: "$valor" } } }
+  ]);
+
+  res.json({
+    totalOS,
+    totalVendas: totalVendas[0]?.total || 0,
+    totalDespesas: totalDespesas[0]?.total || 0,
+    lucro:
+      (totalVendas[0]?.total || 0) -
+      (totalDespesas[0]?.total || 0)
+  });
 });
 
 /* ================= ROOT ================= */
@@ -204,10 +207,10 @@ app.get("/health", (req, res) => {
   res.send("OK");
 });
 
-/* ================= PORTA RENDER ================= */
+/* ================= SERVER ================= */
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log("🚀 Servidor rodando na porta " + PORT);
 });
