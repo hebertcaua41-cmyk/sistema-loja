@@ -6,6 +6,8 @@ const PDFDocument = require("pdfkit");
 
 const app = express();
 
+app.use(express.static("public"));
+
 /* ================= CONFIG ================= */
 
 app.use(express.json());
@@ -170,4 +172,8 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(require("path").join(__dirname, "public", "index.html"));
 });
