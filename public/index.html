@@ -2,160 +2,248 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HS Cell Imports</title>
 
 <style>
-body{margin:0;font-family:Arial;background:#f4f6f9}
-header{background:#111;color:#fff;padding:15px;text-align:center;font-size:20px}
-nav{background:#222;display:flex;flex-wrap:wrap;gap:5px;padding:10px;justify-content:center}
-nav button{background:#00c853;border:none;padding:8px 12px;color:white;font-weight:bold;border-radius:5px;cursor:pointer}
-section{display:none;padding:20px}
-section.active{display:block}
-input,select{width:100%;padding:8px;margin:5px 0}
-button.salvar{background:#2196f3;color:white;padding:10px;border:none;width:100%;margin-top:10px;font-weight:bold}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:14px}
-th{background:#eee}
+body {
+  font-family: Arial;
+  background: #111;
+  color: white;
+  margin: 0;
+}
+
+header {
+  background: #00c853;
+  padding: 15px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+nav {
+  display: flex;
+  justify-content: space-around;
+  background: #222;
+  padding: 10px;
+}
+
+nav button {
+  background: #00c853;
+  border: none;
+  padding: 10px;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+section {
+  padding: 20px;
+  display: none;
+}
+
+input, select {
+  padding: 8px;
+  margin: 5px 0;
+  width: 100%;
+}
+
+button {
+  padding: 8px;
+  margin-top: 5px;
+  background: #00c853;
+  border: none;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.card {
+  background: #222;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 5px;
+}
 </style>
 </head>
 <body>
 
-<header>📱 HS Cell Imports - Sistema Completo</header>
+<header>📱 HS Cell Imports</header>
 
 <nav>
-<button onclick="abrir('os')">Nova OS</button>
-<button onclick="abrir('estoque')">Estoque</button>
-<button onclick="abrir('venda')">Venda</button>
-<button onclick="abrir('despesas')">Despesas</button>
-<button onclick="abrir('dashboard')">Dashboard</button>
+<button onclick="mostrar('dashboard')">Dashboard</button>
+<button onclick="mostrar('os')">OS</button>
+<button onclick="mostrar('estoque')">Estoque</button>
+<button onclick="mostrar('venda')">Venda</button>
 </nav>
 
-<section id="os" class="active">
-<h3>Nova OS</h3>
+<!-- DASHBOARD -->
+<section id="dashboard">
+<h2>📊 Dashboard</h2>
+<div id="dadosDashboard"></div>
+</section>
+
+<!-- OS -->
+<section id="os">
+<h2>📋 Nova Ordem de Serviço</h2>
+
 <input id="cliente" placeholder="Cliente">
 <input id="telefone" placeholder="Telefone">
 <input id="aparelho" placeholder="Aparelho">
 <input id="defeito" placeholder="Defeito">
-<input id="valor" type="number" placeholder="Valor">
-<input id="garantia" placeholder="Garantia">
-<select id="status">
-<option>Em andamento</option>
-<option>Pronto</option>
-<option>Entregue</option>
-</select>
-<button class="salvar" onclick="salvarOS()">Salvar OS</button>
+<input id="valor" placeholder="Valor">
+<input id="garantia" placeholder="Garantia (dias)">
+<button onclick="criarOS()">Salvar OS</button>
+
+<h3>Lista de OS</h3>
+<div id="listaOS"></div>
 </section>
 
+<!-- ESTOQUE -->
 <section id="estoque">
-<h3>Estoque</h3>
+<h2>📦 Estoque</h2>
+
 <input id="produto" placeholder="Produto">
-<input id="quantidade" type="number" placeholder="Quantidade">
-<input id="preco" type="number" placeholder="Preço">
-<button class="salvar" onclick="salvarEstoque()">Salvar Produto</button>
+<input id="quantidade" placeholder="Quantidade">
+<input id="preco" placeholder="Preço">
+<button onclick="adicionarEstoque()">Adicionar</button>
+
+<h3>Consultar Estoque</h3>
 <div id="listaEstoque"></div>
 </section>
 
+<!-- VENDA -->
 <section id="venda">
-<h3>Venda</h3>
+<h2>💰 Nova Venda</h2>
+
 <input id="clienteVenda" placeholder="Cliente">
 <input id="produtoVenda" placeholder="Produto">
-<input id="quantidadeVenda" type="number" placeholder="Quantidade">
-<button class="salvar" onclick="gerarVenda()">Finalizar Venda</button>
-</section>
+<input id="quantidadeVenda" placeholder="Quantidade">
+<button onclick="fazerVenda()">Vender</button>
 
-<section id="despesas">
-<h3>Despesas</h3>
-<input id="descDespesa" placeholder="Descrição">
-<input id="valorDespesa" type="number" placeholder="Valor">
-<button class="salvar" onclick="salvarDespesa()">Salvar</button>
-</section>
-
-<section id="dashboard">
-<h3>Resumo Financeiro</h3>
-<p>Total Vendas: R$ <span id="totalVendas">0</span></p>
-<p>Total Despesas: R$ <span id="totalDespesas">0</span></p>
-<p>Lucro: R$ <span id="lucro">0</span></p>
-<h4>Meta: R$ 5.000</h4>
-<div style="background:#ddd;height:25px;border-radius:20px;">
-<div id="barraMeta" style="height:25px;width:0%;background:#00c853;border-radius:20px;text-align:center;color:white;"></div>
-</div>
+<h3>Histórico</h3>
+<div id="listaVendas"></div>
 </section>
 
 <script>
 
-function abrir(id){
-document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-document.getElementById(id).classList.add("active");
+function mostrar(secao){
+  document.querySelectorAll("section").forEach(s=>s.style.display="none");
+  document.getElementById(secao).style.display="block";
 }
 
-async function salvarOS(){
-await fetch("/os",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-cliente:cliente.value,
-telefone:telefone.value,
-aparelho:aparelho.value,
-defeito:defeito.value,
-valor:Number(valor.value),
-garantia:garantia.value,
-status:status.value
-})});
-alert("OS salva");
-}
-
-async function salvarEstoque(){
-await fetch("/estoque",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-produto:produto.value,
-quantidade:Number(quantidade.value),
-preco:Number(preco.value)
-})});
-alert("Produto salvo");
-}
-
-async function gerarVenda(){
-const res=await fetch("/venda",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-cliente:clienteVenda.value,
-produto:produtoVenda.value,
-quantidade:Number(quantidadeVenda.value)
-})});
-const r=await res.json();
-if(r.erro){alert(r.erro);return;}
-alert("Venda realizada R$ "+r.total);
-carregarDashboard();
-}
-
-async function salvarDespesa(){
-await fetch("/despesas",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-descricao:descDespesa.value,
-valor:Number(valorDespesa.value)
-})});
-alert("Despesa salva");
-carregarDashboard();
-}
+mostrar("dashboard");
 
 async function carregarDashboard(){
-const vendas=await (await fetch("/vendas")).json();
-const despesas=await (await fetch("/despesas")).json();
+  const res = await fetch("/dashboard");
+  const data = await res.json();
 
-let totalV=0; vendas.forEach(v=>totalV+=v.total);
-let totalD=0; despesas.forEach(d=>totalD+=d.valor);
-
-totalVendas.innerText=totalV;
-totalDespesas.innerText=totalD;
-lucro.innerText=totalV-totalD;
-
-let meta=5000;
-let p=(totalV/meta)*100;
-if(p>100)p=100;
-barraMeta.style.width=p+"%";
-barraMeta.innerText=Math.floor(p)+"%";
+  document.getElementById("dadosDashboard").innerHTML = `
+    OS abertas: ${data.totalOS} <br>
+    Total Vendas: R$ ${data.totalVendas} <br>
+    Despesas: R$ ${data.totalDespesas} <br>
+    Lucro: R$ ${data.lucro}
+  `;
 }
 
-window.onload=carregarDashboard;
+async function criarOS(){
+  await fetch("/os",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      cliente:cliente.value,
+      telefone:telefone.value,
+      aparelho:aparelho.value,
+      defeito:defeito.value,
+      valor:Number(valor.value),
+      garantia:garantia.value,
+      status:"Em andamento"
+    })
+  });
+  carregarOS();
+}
+
+async function carregarOS(){
+  const res = await fetch("/os");
+  const lista = await res.json();
+
+  listaOS.innerHTML="";
+  lista.forEach(os=>{
+    listaOS.innerHTML+=`
+      <div class="card">
+        ${os.cliente} - ${os.aparelho} - R$ ${os.valor}
+        <br>
+        <button onclick="gerarPDF('${os._id}')">PDF</button>
+      </div>
+    `;
+  });
+}
+
+function gerarPDF(id){
+  window.open("/os/"+id+"/pdf","_blank");
+}
+
+async function adicionarEstoque(){
+  await fetch("/estoque",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      produto:produto.value,
+      quantidade:Number(quantidade.value),
+      preco:Number(preco.value)
+    })
+  });
+  carregarEstoque();
+}
+
+async function carregarEstoque(){
+  const res = await fetch("/estoque");
+  const lista = await res.json();
+
+  listaEstoque.innerHTML="";
+  lista.forEach(item=>{
+    listaEstoque.innerHTML+=`
+      <div class="card">
+        ${item.produto} - ${item.quantidade} unidades - R$ ${item.preco}
+      </div>
+    `;
+  });
+}
+
+async function fazerVenda(){
+  await fetch("/venda",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      cliente:clienteVenda.value,
+      produto:produtoVenda.value,
+      quantidade:Number(quantidadeVenda.value)
+    })
+  });
+  carregarVendas();
+  carregarEstoque();
+  carregarDashboard();
+}
+
+async function carregarVendas(){
+  const res = await fetch("/vendas");
+  const lista = await res.json();
+
+  listaVendas.innerHTML="";
+  lista.forEach(v=>{
+    listaVendas.innerHTML+=`
+      <div class="card">
+        ${v.cliente} - ${v.produto} - R$ ${v.total}
+      </div>
+    `;
+  });
+}
+
+carregarDashboard();
+carregarOS();
+carregarEstoque();
+carregarVendas();
 
 </script>
+
 </body>
 </html>
