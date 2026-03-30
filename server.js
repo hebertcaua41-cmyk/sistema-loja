@@ -6,13 +6,11 @@ const PDFDocument = require("pdfkit");
 
 const app = express();
 
-app.use(express.static("public"));
-
 /* ================= CONFIG ================= */
 
 app.use(express.json());
 app.use(cors());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB conectado"))
@@ -28,13 +26,15 @@ const osSchema = new mongoose.Schema({
   valor: Number,
   garantia: String,
   status: String,
+  excluido: { type: Boolean, default: false },
   data: { type: Date, default: Date.now }
 });
 
 const estoqueSchema = new mongoose.Schema({
   produto: String,
   quantidade: Number,
-  preco: Number
+  preco: Number,
+  excluido: { type: Boolean, default: false }
 });
 
 const vendaSchema = new mongoose.Schema({
@@ -42,12 +42,14 @@ const vendaSchema = new mongoose.Schema({
   produto: String,
   quantidade: Number,
   total: Number,
+  excluido: { type: Boolean, default: false },
   data: { type: Date, default: Date.now }
 });
 
 const despesaSchema = new mongoose.Schema({
   descricao: String,
   valor: Number,
+  excluido: { type: Boolean, default: false },
   data: { type: Date, default: Date.now }
 });
 
@@ -56,7 +58,20 @@ const Estoque = mongoose.model("Estoque", estoqueSchema);
 const Venda = mongoose.model("Venda", vendaSchema);
 const Despesa = mongoose.model("Despesa", despesaSchema);
 
-/* ================= ROTAS OS ================= */
+/* ================= PROTEÇÃO ADMIN ================= */
+
+function validarAdmin(req, res) {
+  const { senhaAdmin } = req.body;
+
+  if (!senhaAdmin || senhaAdmin !== process.env.ADMIN_PASSWORD) {
+    res.status(403).json({ erro: "Senha admin incorreta" });
+    return false;
+  }
+
+  return true;
+}
+
+/* ================= OS ================= */
 
 app.post("/os", async (req, res) => {
   const nova = await OS.create(req.body);
@@ -64,14 +79,18 @@ app.post("/os", async (req, res) => {
 });
 
 app.get("/os", async (req, res) => {
-  const lista = await OS.find().sort({ data: -1 });
+  const lista = await OS.find({ excluido: false }).sort({ data: -1 });
   res.json(lista);
 });
 
 app.delete("/os/:id", async (req, res) => {
-  await OS.findByIdAndDelete(req.params.id);
+  if (!validarAdmin(req, res)) return;
+
+  await OS.findByIdAndUpdate(req.params.id, { excluido: true });
   res.json({ ok: true });
 });
+
+/* ================= PDF OS ================= */
 
 app.get("/os/:id/pdf", async (req, res) => {
   const os = await OS.findById(req.params.id);
@@ -103,8 +122,15 @@ app.post("/estoque", async (req, res) => {
 });
 
 app.get("/estoque", async (req, res) => {
-  const lista = await Estoque.find();
+  const lista = await Estoque.find({ excluido: false });
   res.json(lista);
+});
+
+app.delete("/estoque/:id", async (req, res) => {
+  if (!validarAdmin(req, res)) return;
+
+  await Estoque.findByIdAndUpdate(req.params.id, { excluido: true });
+  res.json({ ok: true });
 });
 
 /* ================= VENDAS ================= */
@@ -112,7 +138,7 @@ app.get("/estoque", async (req, res) => {
 app.post("/venda", async (req, res) => {
   const { cliente, produto, quantidade } = req.body;
 
-  const item = await Estoque.findOne({ produto });
+  const item = await Estoque.findOne({ produto, excluido: false });
 
   if (!item) {
     return res.status(400).json({ erro: "Produto não encontrado" });
@@ -138,8 +164,15 @@ app.post("/venda", async (req, res) => {
 });
 
 app.get("/vendas", async (req, res) => {
-  const lista = await Venda.find().sort({ data: -1 });
+  const lista = await Venda.find({ excluido: false }).sort({ data: -1 });
   res.json(lista);
+});
+
+app.delete("/vendas/:id", async (req, res) => {
+  if (!validarAdmin(req, res)) return;
+
+  await Venda.findByIdAndUpdate(req.params.id, { excluido: true });
+  res.json({ ok: true });
 });
 
 /* ================= DESPESAS ================= */
@@ -150,20 +183,25 @@ app.post("/despesas", async (req, res) => {
 });
 
 app.get("/despesas", async (req, res) => {
-  const lista = await Despesa.find().sort({ data: -1 });
+  const lista = await Despesa.find({ excluido: false }).sort({ data: -1 });
   res.json(lista);
 });
 
-/* ================= TESTE ================= */
+app.delete("/despesas/:id", async (req, res) => {
+  if (!validarAdmin(req, res)) return;
 
-app.get("/health", (req, res) => {
-  res.send("OK");
+  await Despesa.findByIdAndUpdate(req.params.id, { excluido: true });
+  res.json({ ok: true });
 });
 
 /* ================= ROOT ================= */
 
 app.get("/", (req, res) => {
-  res.send("HS Cell Imports Online 🚀");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/health", (req, res) => {
+  res.send("OK");
 });
 
 /* ================= PORTA RENDER ================= */
@@ -172,8 +210,4 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
-});
-
-app.get("/", (req, res) => {
-  res.sendFile(require("path").join(__dirname, "public", "index.html"));
 });
