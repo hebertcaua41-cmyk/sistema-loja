@@ -127,5 +127,7 @@ app.post("/venda", async(req,res)=>{
   res.json(novaVenda);
 });
 
-app.get("/vendas", async(req,res)=>{
-  const lista
+app.get("/vendas", async (req, res) => {
+  const lista = await Venda.find().sort({ data: -1 });
+  res.json(lista);
+});
