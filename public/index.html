@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
 <title>HS Cell Imports</title>
@@ -8,22 +8,17 @@
 <style>
 body{
   margin:0;
-  font-family: 'Segoe UI', sans-serif;
-  background:#0f172a;
-  color:#fff;
+  font-family:Arial;
+  background:#f4f6f9;
 }
-
-.container{
-  display:flex;
-  min-height:100vh;
-}
-
-/* SIDEBAR */
 
 .sidebar{
   width:220px;
+  height:100vh;
   background:#111827;
-  padding:20px;
+  position:fixed;
+  padding-top:20px;
+  color:#fff;
 }
 
 .sidebar h2{
@@ -34,111 +29,70 @@ body{
 .sidebar button{
   width:100%;
   padding:12px;
-  margin-bottom:10px;
   border:none;
-  background:#1f2937;
+  background:none;
   color:#fff;
-  border-radius:8px;
+  text-align:left;
   cursor:pointer;
-  transition:0.2s;
 }
 
 .sidebar button:hover{
-  background:#2563eb;
+  background:#1f2937;
 }
 
-/* MAIN */
-
-.main{
-  flex:1;
-  padding:25px;
+.content{
+  margin-left:220px;
+  padding:20px;
 }
 
-.section{
-  display:none;
-}
-
-.active{
-  display:block;
-}
+.section{ display:none; }
 
 .card{
-  background:#1e293b;
-  padding:20px;
-  border-radius:12px;
-  margin-bottom:20px;
-  box-shadow:0 4px 15px rgba(0,0,0,0.4);
-}
-
-.card h3{
-  margin-top:0;
+  background:#fff;
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:10px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
 }
 
 input, select{
   width:100%;
-  padding:10px;
-  margin:8px 0;
-  border:none;
-  border-radius:8px;
-  background:#334155;
-  color:#fff;
+  padding:8px;
+  margin:5px 0;
 }
 
 button.action{
   background:#2563eb;
-  color:white;
-  border:none;
+  color:#fff;
   padding:10px;
-  border-radius:8px;
+  border:none;
+  border-radius:6px;
   cursor:pointer;
-  margin-top:10px;
-  transition:0.2s;
 }
+button.action:hover{ background:#1d4ed8; }
 
-button.action:hover{
-  background:#1d4ed8;
-}
-
-.stat{
-  font-size:22px;
-  font-weight:bold;
-  margin-top:10px;
-}
+h3{ margin-top:0; }
 </style>
 </head>
-
 <body>
 
-<div class="container">
-
 <div class="sidebar">
-  <h2>📱 HS Cell</h2>
+  <h2>HS Cell</h2>
   <button onclick="show('dashboard')">📊 Dashboard</button>
-  <button onclick="show('os')">🛠 Ordens</button>
+  <button onclick="show('os')">📱 Ordens</button>
   <button onclick="show('estoque')">📦 Estoque</button>
   <button onclick="show('vendas')">💰 Vendas</button>
+  <button onclick="show('despesas')">📉 Despesas</button>
 </div>
 
-<div class="main">
+<div class="content">
 
 <!-- DASHBOARD -->
-<div id="dashboard" class="section active">
-
+<div id="dashboard" class="section">
   <div class="card">
-    <h3>Ordens de Serviço</h3>
-    <div class="stat" id="totalOS">0</div>
+    <h3>Resumo</h3>
+    <div id="resumo"></div>
   </div>
-
-  <div class="card">
-    <h3>Total em Vendas</h3>
-    <div class="stat" id="totalVendas">R$ 0</div>
-  </div>
-
-  <div class="card">
-    <h3>Produtos no Estoque</h3>
-    <div class="stat" id="totalEstoque">0</div>
-  </div>
-
 </div>
 
 <!-- OS -->
@@ -149,16 +103,15 @@ button.action:hover{
     <input id="telefone" placeholder="Telefone">
     <input id="aparelho" placeholder="Aparelho">
     <input id="defeito" placeholder="Defeito">
-    <input id="valor" placeholder="Valor">
-    <input id="garantia" placeholder="Garantia dias">
+    <input id="valor" type="number" placeholder="Valor">
+    <input id="garantia" placeholder="Garantia (dias)">
     <select id="status">
       <option>Em andamento</option>
       <option>Pronto</option>
       <option>Entregue</option>
     </select>
-    <button class="action" onclick="criarOS()">Salvar</button>
+    <button class="action" onclick="addOS()">Salvar</button>
   </div>
-
   <div id="listaOS"></div>
 </div>
 
@@ -167,11 +120,10 @@ button.action:hover{
   <div class="card">
     <h3>Novo Produto</h3>
     <input id="produto" placeholder="Produto">
-    <input id="quantidade" placeholder="Quantidade">
-    <input id="preco" placeholder="Preço">
-    <button class="action" onclick="addEstoque()">Adicionar</button>
+    <input id="quantidade" type="number" placeholder="Quantidade">
+    <input id="preco" type="number" placeholder="Preço">
+    <button class="action" onclick="addEstoque()">Salvar</button>
   </div>
-
   <div id="listaEstoque"></div>
 </div>
 
@@ -180,25 +132,36 @@ button.action:hover{
   <div class="card">
     <h3>Nova Venda</h3>
     <input id="vProduto" placeholder="Produto">
-    <input id="vQuantidade" placeholder="Quantidade">
-    <button class="action" onclick="vender()">Registrar</button>
+    <input id="vQuantidade" type="number" placeholder="Quantidade">
+    <button class="action" onclick="addVenda()">Vender</button>
   </div>
-
   <div id="listaVendas"></div>
 </div>
 
+<!-- DESPESAS -->
+<div id="despesas" class="section">
+  <div class="card">
+    <h3>Nova Despesa</h3>
+    <input id="dDescricao" placeholder="Descrição">
+    <input id="dValor" type="number" placeholder="Valor">
+    <button class="action" onclick="addDespesa()">Salvar</button>
+  </div>
+  <div id="listaDespesas"></div>
 </div>
+
 </div>
 
 <script>
+
+/* ===== MENU ===== */
 function show(id){
-  document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+  document.getElementById(id).style.display="block";
 }
+show("dashboard");
 
-/* ================= OS ================= */
-
-async function criarOS(){
+/* ===== OS ===== */
+async function addOS(){
   await fetch("/os",{
     method:"POST",
     headers:{ "Content-Type":"application/json"},
@@ -218,23 +181,19 @@ async function criarOS(){
 async function carregarOS(){
   const res = await fetch("/os");
   const dados = await res.json();
-  totalOS.innerText = dados.length;
-
   listaOS.innerHTML="";
-  dados.forEach(os=>{
+  dados.forEach(o=>{
     listaOS.innerHTML+=`
-    <div class="card">
-      <b>${os.cliente}</b> - ${os.aparelho}<br>
-      Status: ${os.status} <br>
-      R$ ${os.valor}
-      <br><br>
-      <button class="action" onclick="window.open('/os/${os._id}/pdf')">Gerar PDF</button>
-    </div>`;
+      <div class="card">
+        ${o.cliente} - ${o.aparelho}<br>
+        R$ ${o.valor}<br>
+        <a href="/os/${o._id}/pdf" target="_blank">📄 PDF</a>
+      </div>`;
   });
 }
+carregarOS();
 
-/* ================= ESTOQUE ================= */
-
+/* ===== ESTOQUE ===== */
 async function addEstoque(){
   await fetch("/estoque",{
     method:"POST",
@@ -251,22 +210,20 @@ async function addEstoque(){
 async function carregarEstoque(){
   const res = await fetch("/estoque");
   const dados = await res.json();
-  totalEstoque.innerText = dados.length;
-
   listaEstoque.innerHTML="";
   dados.forEach(p=>{
     listaEstoque.innerHTML+=`
-    <div class="card">
-      ${p.produto} <br>
-      Qtd: ${p.quantidade} <br>
-      R$ ${p.preco}
-    </div>`;
+      <div class="card">
+        ${p.produto}<br>
+        Qtd: ${p.quantidade}<br>
+        R$ ${p.preco}
+      </div>`;
   });
 }
+carregarEstoque();
 
-/* ================= VENDAS ================= */
-
-async function vender(){
+/* ===== VENDAS ===== */
+async function addVenda(){
   await fetch("/venda",{
     method:"POST",
     headers:{ "Content-Type":"application/json"},
@@ -282,28 +239,62 @@ async function vender(){
 async function carregarVendas(){
   const res = await fetch("/vendas");
   const dados = await res.json();
-
-  let total=0;
-  dados.forEach(v=> total+=v.valor);
-
-  totalVendas.innerText="R$ "+total;
-
   listaVendas.innerHTML="";
   dados.forEach(v=>{
     listaVendas.innerHTML+=`
-    <div class="card">
-      ${v.produto} - ${v.quantidade} un <br>
-      Total: R$ ${v.valor}
-    </div>`;
+      <div class="card">
+        ${v.produto}<br>
+        Qtd: ${v.quantidade}<br>
+        R$ ${v.valor}
+      </div>`;
   });
 }
-
-/* INIT */
-carregarOS();
-carregarEstoque();
 carregarVendas();
 
-</script>
+/* ===== DESPESAS ===== */
+async function addDespesa(){
+  await fetch("/despesa",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json"},
+    body:JSON.stringify({
+      descricao:dDescricao.value,
+      valor:Number(dValor.value)
+    })
+  });
+  carregarDespesas();
+}
 
+async function carregarDespesas(){
+  const res = await fetch("/despesas");
+  const dados = await res.json();
+  listaDespesas.innerHTML="";
+  dados.forEach(d=>{
+    listaDespesas.innerHTML+=`
+      <div class="card">
+        ${d.descricao}<br>
+        R$ ${d.valor}
+      </div>`;
+  });
+}
+carregarDespesas();
+
+/* ===== DASHBOARD ===== */
+async function carregarDashboard(){
+  const vendas = await fetch("/vendas").then(r=>r.json());
+  const despesas = await fetch("/despesas").then(r=>r.json());
+
+  const totalVendas = vendas.reduce((a,b)=>a+b.valor,0);
+  const totalDespesas = despesas.reduce((a,b)=>a+b.valor,0);
+  const lucro = totalVendas - totalDespesas;
+
+  resumo.innerHTML = `
+    Total Vendas: R$ ${totalVendas}<br>
+    Total Despesas: R$ ${totalDespesas}<br>
+    <b>Lucro Líquido: R$ ${lucro}</b>
+  `;
+}
+carregarDashboard();
+
+</script>
 </body>
 </html>

@@ -1,29 +1,27 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 const PDFDocument = require("pdfkit");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
+
+/* ================== MONGO ================== */
 
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB conectado"))
-.catch(err => console.log(err));
+.then(()=> console.log("MongoDB conectado"))
+.catch(err=> console.log(err));
 
-/* =========================
-   MODELS
-========================= */
+/* ================== MODELS ================== */
 
-const Usuario = mongoose.model("Usuario", {
-  usuario: String,
-  senha: String
-});
-
-const OS = mongoose.model("OS", {
+const Ordem = mongoose.model("Ordem", {
+  numeroOS: Number,
   cliente: String,
   telefone: String,
   aparelho: String,
@@ -47,147 +45,214 @@ const Venda = mongoose.model("Venda", {
   data: { type: Date, default: Date.now }
 });
 
-/* =========================
-   ROTA PRINCIPAL
-========================= */
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+const Despesa = mongoose.model("Despesa", {
+  descricao: String,
+  valor: Number,
+  data: { type: Date, default: Date.now }
 });
 
-/* =========================
-   LOGIN
-========================= */
+/* ================== ROTAS ================== */
 
-app.post("/login", async (req, res) => {
-  const { usuario, senha } = req.body;
-
-  const user = await Usuario.findOne({ usuario, senha });
-
-  if (!user) {
-    return res.status(400).json({ erro: "Usuário não encontrado" });
-  }
-
-  res.json({ mensagem: "Login realizado com sucesso" });
+app.get("/", (req,res)=>{
+  res.sendFile(path.join(__dirname,"public","index.html"));
 });
 
-/* =========================
-   ORDEM DE SERVIÇO
-========================= */
+/* ================== OS ================== */
 
 app.post("/os", async (req, res) => {
-  const nova = new OS(req.body);
-  await nova.save();
-  res.json(nova);
+
+  const ultimaOS = await Ordem.findOne().sort({ numeroOS: -1 });
+  const novoNumero = ultimaOS ? ultimaOS.numeroOS + 1 : 1;
+
+  await Ordem.create({
+    ...req.body,
+    numeroOS: novoNumero
+  });
+
+  res.json({ ok: true });
 });
 
-app.get("/os", async (req, res) => {
-  const lista = await OS.find().sort({ data: -1 });
+app.get("/os", async(req,res)=>{
+  const lista = await Ordem.find().sort({data:-1});
   res.json(lista);
 });
 
-app.put("/os/:id", async (req, res) => {
-  await OS.findByIdAndUpdate(req.params.id, req.body);
-  res.json({ mensagem: "OS atualizada" });
-});
-
-app.delete("/os/:id", async (req, res) => {
-  await OS.findByIdAndDelete(req.params.id);
-  res.json({ mensagem: "OS excluída" });
-});
-
-/* =========================
-   PDF DA OS
-========================= */
+/* ================== PDF ORDEM SHOPPING ================== */
 
 app.get("/os/:id/pdf", async (req, res) => {
-  const os = await OS.findById(req.params.id);
+  try {
+    const os = await Ordem.findById(req.params.id);
+    if (!os) return res.status(404).send("OS não encontrada");
 
-  if (!os) return res.status(404).send("OS não encontrada");
+    const doc = new PDFDocument({ margin: 40 });
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
 
-  const doc = new PDFDocument();
-  res.setHeader("Content-Type", "application/pdf");
-  doc.pipe(res);
+    const logoPath = path.join(__dirname, "public", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 30, { width: 90 });
+    }
 
-  doc.fontSize(18).text("HS Cell Imports", { align: "center" });
-  doc.moveDown();
+    doc
+      .fontSize(18)
+      .text("HS CELL IMPORTS", 150, 40)
+      .fontSize(10)
+      .text("Assistência Técnica Especializada", 150, 60);
 
-  doc.fontSize(12).text(`Cliente: ${os.cliente}`);
-  doc.text(`Telefone: ${os.telefone}`);
-  doc.text(`Aparelho: ${os.aparelho}`);
-  doc.text(`Defeito: ${os.defeito}`);
-  doc.text(`Valor: R$ ${os.valor}`);
-  doc.text(`Garantia: ${os.garantia} dias`);
-  doc.text(`Status: ${os.status}`);
-  doc.text(`Data: ${os.data.toLocaleDateString()}`);
+    doc
+      .fontSize(14)
+      .text(`ORDEM DE SERVIÇO Nº ${String(os.numeroOS).padStart(4,'0')}`, 40, 110);
 
-  doc.end();
+    doc.moveTo(40,130).lineTo(550,130).stroke();
+
+    doc
+      .fontSize(11)
+      .text(`Cliente: ${os.cliente}`,50,150)
+      .text(`Telefone: ${os.telefone}`,50,170)
+      .text(`Aparelho: ${os.aparelho}`,50,190)
+      .text(`Serviço executado: ${os.defeito}`,50,210);
+
+    doc.moveDown(3);
+
+    doc.rect(40,250,520,60).stroke();
+
+    doc
+      .fontSize(12)
+      .text(`Valor Total: R$ ${os.valor}`,50,270)
+      .text(`Garantia: ${os.garantia} dias`,220,270)
+      .text(`Status: ${os.status}`,400,270);
+
+    doc.moveDown(6);
+
+    doc.fontSize(10)
+    .text("Declaro estar ciente das condições do serviço prestado.",50,340);
+
+    doc.text("_________________________________________",50,390);
+    doc.text("Assinatura do Cliente",50,405);
+
+    doc.text("_________________________________________",350,390);
+    doc.text("HS Cell Imports",350,405);
+
+    doc.end();
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Erro ao gerar PDF");
+  }
 });
 
-/* =========================
-   ESTOQUE
-========================= */
+/* ================== CERTIFICADO GARANTIA SHOPPING ================== */
 
-app.post("/estoque", async (req, res) => {
-  const novo = new Estoque(req.body);
-  await novo.save();
-  res.json(novo);
+app.get("/os/:id/garantia", async (req, res) => {
+  try {
+    const os = await Ordem.findById(req.params.id);
+    if (!os) return res.status(404).send("OS não encontrada");
+
+    const doc = new PDFDocument({ margin: 40 });
+    res.setHeader("Content-Type", "application/pdf");
+    doc.pipe(res);
+
+    const logoPath = path.join(__dirname, "public", "logo.png");
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, 40, 30, { width: 90 });
+    }
+
+    doc
+      .fontSize(18)
+      .text("HS CELL IMPORTS", 150, 40)
+      .fontSize(12)
+      .text("CERTIFICADO DE GARANTIA", 150, 60);
+
+    doc.moveDown(3);
+
+    doc
+      .fontSize(11)
+      .text(`Referente à OS Nº ${String(os.numeroOS).padStart(4,'0')}`)
+      .text(`Cliente: ${os.cliente}`)
+      .text(`Aparelho: ${os.aparelho}`)
+      .text(`Serviço realizado: ${os.defeito}`)
+      .text(`Prazo de garantia: ${os.garantia} dias`)
+      .text(`Data: ${new Date(os.data).toLocaleDateString()}`);
+
+    doc.moveDown(2);
+
+    doc
+      .text("CONDIÇÕES DA GARANTIA:")
+      .moveDown(1)
+      .text("• Garantia válida somente para o serviço descrito.")
+      .text("• Danos por queda, água ou mau uso cancelam a garantia.")
+      .text("• Violação do lacre invalida automaticamente.")
+      .text("• Apresentar este certificado para validação.");
+
+    doc.moveDown(4);
+
+    doc.text("_________________________________________",50);
+    doc.text("Assinatura do Cliente",50);
+
+    doc.text("_________________________________________",350,doc.y-20);
+    doc.text("HS Cell Imports",350);
+
+    doc.end();
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Erro ao gerar garantia");
+  }
 });
 
-app.get("/estoque", async (req, res) => {
+/* ================== ESTOQUE ================== */
+
+app.post("/estoque", async(req,res)=>{
+  await Estoque.create(req.body);
+  res.json({ok:true});
+});
+
+app.get("/estoque", async(req,res)=>{
   const lista = await Estoque.find();
   res.json(lista);
 });
 
-app.put("/estoque/:id", async (req, res) => {
-  await Estoque.findByIdAndUpdate(req.params.id, req.body);
-  res.json({ mensagem: "Produto atualizado" });
-});
+/* ================== VENDAS ================== */
 
-app.delete("/estoque/:id", async (req, res) => {
-  await Estoque.findByIdAndDelete(req.params.id);
-  res.json({ mensagem: "Produto removido" });
-});
+app.post("/venda", async(req,res)=>{
+  const produto = await Estoque.findOne({produto:req.body.produto});
+  if(!produto) return res.status(400).send("Produto não encontrado");
 
-/* =========================
-   VENDAS (BAIXA AUTOMÁTICA)
-========================= */
+  if(produto.quantidade < req.body.quantidade)
+    return res.status(400).send("Estoque insuficiente");
 
-app.post("/venda", async (req, res) => {
-  const { produto, quantidade } = req.body;
+  produto.quantidade -= req.body.quantidade;
+  await produto.save();
 
-  const item = await Estoque.findOne({ produto });
+  const total = produto.preco * req.body.quantidade;
 
-  if (!item) return res.status(400).json({ erro: "Produto não encontrado" });
-
-  if (item.quantidade < quantidade)
-    return res.status(400).json({ erro: "Estoque insuficiente" });
-
-  item.quantidade -= quantidade;
-  await item.save();
-
-  const venda = new Venda({
-    produto,
-    quantidade,
-    valor: item.preco * quantidade
+  await Venda.create({
+    produto:req.body.produto,
+    quantidade:req.body.quantidade,
+    valor:total
   });
 
-  await venda.save();
-
-  res.json({ mensagem: "Venda realizada com sucesso" });
+  res.json({ok:true});
 });
 
-app.get("/vendas", async (req, res) => {
-  const lista = await Venda.find().sort({ data: -1 });
+app.get("/vendas", async(req,res)=>{
+  const lista = await Venda.find().sort({data:-1});
   res.json(lista);
 });
 
-/* =========================
-   PORTA
-========================= */
+/* ================== DESPESAS ================== */
+
+app.post("/despesa", async(req,res)=>{
+  await Despesa.create(req.body);
+  res.json({ok:true});
+});
+
+app.get("/despesas", async(req,res)=>{
+  const lista = await Despesa.find().sort({data:-1});
+  res.json(lista);
+});
+
+/* ================== SERVER ================== */
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
-});
+app.listen(PORT, ()=> console.log("Servidor rodando na porta "+PORT));
