@@ -16,11 +16,10 @@ mongoose.connect(process.env.MONGO_URI)
 
 // ===== MODELS =====
 
-const Loja = mongoose.model("Loja",{ nome:String })
-
 const Usuario = mongoose.model("Usuario",{
   usuario:String,
   senha:String,
+  role:{type:String, default:"admin"},
   storeId:String
 })
 
@@ -50,77 +49,82 @@ const OS = mongoose.model("OS",{
   data:{type:Date, default:Date.now}
 })
 
-const Venda = mongoose.model("Venda",{
-  valor:Number,
-  storeId:String,
-  data:{type:Date, default:Date.now}
-})
-
-const Despesa = mongoose.model("Despesa",{
-  valor:Number,
-  storeId:String,
-  data:{type:Date, default:Date.now}
-})
-
-// ===== INIT =====
-
-async function init(){
-  const loja = await Loja.findOne()
-  if(!loja){
-    const novaLoja = await Loja.create({nome:"Matriz"})
-    const hash = await bcrypt.hash("admin",10)
-
-    await Usuario.create({
-      usuario:"admin",
-      senha:hash,
-      storeId:novaLoja._id
-    })
-
-    console.log("Login: admin / admin")
-  }
-}
-init()
+const Venda = mongoose.model("Venda",{valor:Number,storeId:String,data:{type:Date,default:Date.now}})
+const Despesa = mongoose.model("Despesa",{valor:Number,storeId:String})
 
 // ===== AUTH =====
 
 function auth(req,res,next){
   const token = req.headers.authorization
   if(!token) return res.status(401).json({erro:"Sem token"})
-
   try{
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "segredo")
-    req.user = decoded
+    req.user = jwt.verify(token,"segredo")
     next()
   }catch{
     res.status(401).json({erro:"Token inválido"})
   }
 }
 
+function allow(roles){
+  return (req,res,next)=>{
+    if(!roles.includes(req.user.role)) return res.status(403).json({erro:"Sem permissão"})
+    next()
+  }
+}
+
 // ===== LOGIN =====
 
 app.post("/login", async(req,res)=>{
-  const user = await Usuario.findOne({usuario:req.body.usuario})
-  if(!user) return res.status(401).json({erro:"Usuário não encontrado"})
+  const u = await Usuario.findOne({usuario:req.body.usuario})
+  if(!u) return res.status(401).json({erro:"Erro"})
 
-  const ok = await bcrypt.compare(req.body.senha,user.senha)
-  if(!ok) return res.status(401).json({erro:"Senha incorreta"})
+  const ok = await bcrypt.compare(req.body.senha,u.senha)
+  if(!ok) return res.status(401).json({erro:"Erro"})
 
   const token = jwt.sign({
-    id:user._id,
-    storeId:user.storeId
-  }, process.env.JWT_SECRET || "segredo")
+    id:u._id,
+    storeId:u.storeId,
+    role:u.role
+  },"segredo")
 
   res.json({token})
+})
+
+// ===== USUÁRIOS =====
+
+app.post("/usuarios", auth, allow(["admin"]), async(req,res)=>{
+  const hash = await bcrypt.hash(req.body.senha,10)
+  res.json(await Usuario.create({
+    usuario:req.body.usuario,
+    senha:hash,
+    role:req.body.role,
+    storeId:req.user.storeId
+  }))
 })
 
 // ===== CLIENTES =====
 
 app.post("/clientes", auth, async(req,res)=>{
-  res.json(await Cliente.create({...req.body, storeId:req.user.storeId}))
+  res.json(await Cliente.create({...req.body,storeId:req.user.storeId}))
 })
 
 app.get("/clientes", auth, async(req,res)=>{
   res.json(await Cliente.find({storeId:req.user.storeId}))
+})
+
+app.get("/clientes/busca", auth, async(req,res)=>{
+  const q = req.query.q || ""
+  res.json(await Cliente.find({
+    storeId:req.user.storeId,
+    nome:{$regex:q,$options:"i"}
+  }))
+})
+
+app.get("/cliente/:id/os", auth, async(req,res)=>{
+  res.json(await OS.find({
+    clienteId:req.params.id,
+    storeId:req.user.storeId
+  }).sort({numero:-1}))
 })
 
 // ===== ESTOQUE =====
@@ -139,55 +143,18 @@ app.post("/estoque", auth, async(req,res)=>{
   }))
 })
 
-app.put("/estoque/:id", auth, async(req,res)=>{
-  res.json(await Estoque.findByIdAndUpdate(req.params.id,req.body,{new:true}))
-})
-
-app.delete("/estoque/:id", auth, async(req,res)=>{
-  await Estoque.findByIdAndDelete(req.params.id)
-  res.json({ok:true})
-})
-
-// ===== VENDAS =====
-
-app.get("/vendas", auth, async(req,res)=>{
-  res.json(await Venda.find({storeId:req.user.storeId}))
-})
-
-app.post("/vendas", auth, async(req,res)=>{
-  res.json(await Venda.create({
-    valor:Number(req.body.valor)||0,
-    storeId:req.user.storeId
-  }))
-})
-
-// ===== DESPESAS =====
-
-app.get("/despesas", auth, async(req,res)=>{
-  res.json(await Despesa.find({storeId:req.user.storeId}))
-})
-
-app.post("/despesas", auth, async(req,res)=>{
-  res.json(await Despesa.create({
-    valor:Number(req.body.valor)||0,
-    storeId:req.user.storeId
-  }))
-})
-
 // ===== OS =====
 
 app.post("/os", auth, async(req,res)=>{
   const ultima = await OS.findOne({storeId:req.user.storeId}).sort({numero:-1})
-  const numero = ultima ? ultima.numero + 1 : 1
+  const numero = ultima ? ultima.numero+1 : 1
 
-  const nova = await OS.create({
+  res.json(await OS.create({
     ...req.body,
-    valor:Number(req.body.valor)||0,
     numero,
+    valor:Number(req.body.valor)||0,
     storeId:req.user.storeId
-  })
-
-  res.json(nova)
+  }))
 })
 
 app.get("/os", auth, async(req,res)=>{
@@ -198,54 +165,86 @@ app.get("/os", auth, async(req,res)=>{
 
 app.get("/dashboard", auth, async(req,res)=>{
   const estoque = await Estoque.find({storeId:req.user.storeId})
+
+  const custo = estoque.reduce((t,i)=>t+(i.quantidade*i.precoCusto),0)
+  const venda = estoque.reduce((t,i)=>t+(i.quantidade*i.precoVenda),0)
+
+  res.json({custo,venda,lucro:venda-custo})
+})
+
+// ===== GRAFICO MENSAL =====
+
+app.get("/dashboard/mensal", auth, async(req,res)=>{
   const vendas = await Venda.find({storeId:req.user.storeId})
-  const despesas = await Despesa.find({storeId:req.user.storeId})
+  const map={}
 
-  const estoqueCusto = estoque.reduce((t,i)=>t+(i.quantidade*i.precoCusto),0)
-  const estoqueVenda = estoque.reduce((t,i)=>t+(i.quantidade*i.precoVenda),0)
-
-  const totalVendas = vendas.reduce((t,v)=>t+(v.valor||0),0)
-  const totalDespesas = despesas.reduce((t,d)=>t+(d.valor||0),0)
+  vendas.forEach(v=>{
+    const d=new Date(v.data)
+    const chave=`${d.getFullYear()}-${d.getMonth()+1}`
+    map[chave]=(map[chave]||0)+(v.valor||0)
+  })
 
   res.json({
-    estoqueCusto,
-    estoqueVenda,
-    lucroEstoque: estoqueVenda - estoqueCusto,
-    totalVendas,
-    totalDespesas,
-    lucroLiquido: totalVendas - totalDespesas
+    labels:Object.keys(map),
+    valores:Object.values(map)
   })
 })
 
-// ===== PDF COM QR =====
+// ===== PDF + QR =====
 
 app.get("/os/:id/pdf", auth, async(req,res)=>{
   const os = await OS.findById(req.params.id)
-
   const doc = new PDFDocument()
+
   res.setHeader("Content-Type","application/pdf")
   doc.pipe(res)
 
-  const url = `https://seusite.onrender.com/os/${os._id}`
-  const qr = await QRCode.toDataURL(url)
+  const qr = await QRCode.toDataURL("OS "+os.numero)
 
-  doc.fontSize(16).text("ORDEM DE SERVIÇO")
-  doc.text(`Nº ${os.numero}`)
-  doc.text(`Cliente: ${os.cliente}`)
-  doc.text(`Aparelho: ${os.aparelho}`)
-  doc.text(`Serviço: ${os.servico}`)
-  doc.text(`Valor: R$ ${os.valor}`)
+  doc.text("ORDEM DE SERVIÇO")
+  doc.text("Nº "+os.numero)
+  doc.text("Cliente: "+os.cliente)
+  doc.text("Serviço: "+os.servico)
+  doc.text("Valor: R$ "+os.valor)
 
-  doc.image(qr, 400, 50, {width:80})
-
-  doc.moveDown()
-  doc.text("Garantia:")
-  doc.text(os.garantia || "90 dias")
+  doc.image(qr,{width:80})
 
   doc.end()
 })
 
+// ===== IMPRESSÃO TÉRMICA =====
+
+app.get("/os/:id/print", auth, async(req,res)=>{
+  const os = await OS.findById(req.params.id)
+
+  res.send(`
+  <body style="width:58mm;font-family:monospace">
+  <h3>HS CELL</h3>
+  OS ${os.numero}<br>
+  ${os.cliente}<br>
+  ${os.servico}<br>
+  R$ ${os.valor}
+  <script>window.print()</script>
+  </body>
+  `)
+})
+
+// ===== BACKUP =====
+
+app.get("/backup", auth, allow(["admin"]), async(req,res)=>{
+  const storeId = req.user.storeId
+
+  const data = {
+    clientes: await Cliente.find({storeId}),
+    estoque: await Estoque.find({storeId}),
+    os: await OS.find({storeId}),
+    vendas: await Venda.find({storeId}),
+    despesas: await Despesa.find({storeId})
+  }
+
+  res.json(data)
+})
+
 // ===== START =====
 
-const PORT = process.env.PORT || 3000
-app.listen(PORT,()=>console.log("Servidor rodando"))
+app.listen(process.env.PORT||3000,()=>console.log("Rodando 🚀"))

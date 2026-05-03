@@ -1,407 +1,250 @@
-<!DOCTYPE html>
-<<<<<<< HEAD
-<html>
-<head>
-<meta charset="UTF-8">
-<title>HS Cell</title>
+require("dotenv").config()
+const express = require("express")
+const mongoose = require("mongoose")
+const cors = require("cors")
+const jwt = require("jsonwebtoken")
+const bcrypt = require("bcryptjs")
+const PDFDocument = require("pdfkit")
+const QRCode = require("qrcode")
 
-<style>
-body{margin:0;font-family:Arial;background:#f1f5f9;display:flex}
-.sidebar{width:240px;background:#0f172a;color:#fff;height:100vh;padding:20px}
-.sidebar button{width:100%;padding:12px;margin-bottom:10px;background:#1e293b;border:none;color:#fff;border-radius:8px}
-.main{flex:1;padding:20px}
-.card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
-.cards{display:flex;gap:10px}
-.card-big{flex:1;text-align:center;font-size:18px}
-</style>
-</head>
+const app = express()
+app.use(express.json())
+app.use(cors())
+app.use(express.static("public"))
 
-<body>
+mongoose.connect(process.env.MONGO_URI)
 
-<div class="sidebar">
-<h2>HS Cell</h2>
-<button onclick="mostrar('dash')">Dashboard</button>
-<button onclick="mostrar('estoque')">Estoque</button>
-<button onclick="mostrar('os')">Ordens</button>
-<button onclick="mostrar('clientes')">Clientes</button>
-</div>
+// ===== MODELS =====
 
-<div class="main">
+const Usuario = mongoose.model("Usuario",{
+  usuario:String,
+  senha:String,
+  role:{type:String, default:"admin"},
+  storeId:String
+})
 
-<div id="dash">
-<h2>Resumo</h2>
+const Cliente = mongoose.model("Cliente",{
+  nome:String,
+  telefone:String,
+  storeId:String
+})
 
-<div class="cards">
-<div class="card card-big" id="totalVendas">R$ 0</div>
-<div class="card card-big" id="totalDespesas">R$ 0</div>
-<div class="card card-big" id="lucro">R$ 0</div>
-</div>
-</div>
+const Estoque = mongoose.model("Estoque",{
+  produto:String,
+  quantidade:Number,
+  precoCusto:Number,
+  precoVenda:Number,
+  storeId:String
+})
 
-<div id="estoque" style="display:none"></div>
-<div id="os" style="display:none"></div>
-<div id="clientes" style="display:none"></div>
-=======
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<title>HS Cell Imports</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+const OS = mongoose.model("OS",{
+  numero:Number,
+  cliente:String,
+  clienteId:String,
+  aparelho:String,
+  servico:String,
+  valor:Number,
+  garantia:String,
+  storeId:String,
+  data:{type:Date, default:Date.now}
+})
 
-<style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#f4f6f9;
-}
+const Venda = mongoose.model("Venda",{valor:Number,storeId:String,data:{type:Date,default:Date.now}})
+const Despesa = mongoose.model("Despesa",{valor:Number,storeId:String})
 
-.sidebar{
-  width:220px;
-  height:100vh;
-  background:#111827;
-  position:fixed;
-  padding-top:20px;
-  color:#fff;
-}
+// ===== AUTH =====
 
-.sidebar h2{
-  text-align:center;
-  margin-bottom:30px;
-}
-
-.sidebar button{
-  width:100%;
-  padding:12px;
-  border:none;
-  background:none;
-  color:#fff;
-  text-align:left;
-  cursor:pointer;
-}
-
-.sidebar button:hover{
-  background:#1f2937;
-}
-
-.content{
-  margin-left:220px;
-  padding:20px;
-}
-
-.section{ display:none; }
-
-.card{
-  background:#fff;
-  padding:15px;
-  margin-bottom:15px;
-  border-radius:10px;
-  box-shadow:0 2px 5px rgba(0,0,0,0.1);
-}
-
-input, select{
-  width:100%;
-  padding:8px;
-  margin:5px 0;
-}
-
-button.action{
-  background:#2563eb;
-  color:#fff;
-  padding:10px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-button.action:hover{ background:#1d4ed8; }
-
-h3{ margin-top:0; }
-</style>
-</head>
-<body>
-
-<div class="sidebar">
-  <h2>HS Cell</h2>
-  <button onclick="show('dashboard')">📊 Dashboard</button>
-  <button onclick="show('os')">📱 Ordens</button>
-  <button onclick="show('estoque')">📦 Estoque</button>
-  <button onclick="show('vendas')">💰 Vendas</button>
-  <button onclick="show('despesas')">📉 Despesas</button>
-</div>
-
-<div class="content">
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="section">
-  <div class="card">
-    <h3>Resumo</h3>
-    <div id="resumo"></div>
-  </div>
-</div>
-
-<!-- OS -->
-<div id="os" class="section">
-  <div class="card">
-    <h3>Nova OS</h3>
-    <input id="cliente" placeholder="Cliente">
-    <input id="telefone" placeholder="Telefone">
-    <input id="aparelho" placeholder="Aparelho">
-    <input id="defeito" placeholder="Defeito">
-    <input id="valor" type="number" placeholder="Valor">
-    <input id="garantia" placeholder="Garantia (dias)">
-    <select id="status">
-      <option>Em andamento</option>
-      <option>Pronto</option>
-      <option>Entregue</option>
-    </select>
-    <button class="action" onclick="addOS()">Salvar</button>
-  </div>
-  <div id="listaOS"></div>
-</div>
-
-<!-- ESTOQUE -->
-<div id="estoque" class="section">
-  <div class="card">
-    <h3>Novo Produto</h3>
-    <input id="produto" placeholder="Produto">
-    <input id="quantidade" type="number" placeholder="Quantidade">
-    <input id="preco" type="number" placeholder="Preço">
-    <button class="action" onclick="addEstoque()">Salvar</button>
-  </div>
-  <div id="listaEstoque"></div>
-</div>
-
-<!-- VENDAS -->
-<div id="vendas" class="section">
-  <div class="card">
-    <h3>Nova Venda</h3>
-    <input id="vProduto" placeholder="Produto">
-    <input id="vQuantidade" type="number" placeholder="Quantidade">
-    <button class="action" onclick="addVenda()">Vender</button>
-  </div>
-  <div id="listaVendas"></div>
-</div>
-
-<!-- DESPESAS -->
-<div id="despesas" class="section">
-  <div class="card">
-    <h3>Nova Despesa</h3>
-    <input id="dDescricao" placeholder="Descrição">
-    <input id="dValor" type="number" placeholder="Valor">
-    <button class="action" onclick="addDespesa()">Salvar</button>
-  </div>
-  <div id="listaDespesas"></div>
-</div>
->>>>>>> faa33035cbd2cce85d6828b0dfb63612b7dde263
-
-</div>
-
-<script>
-<<<<<<< HEAD
-let token=""
-
-// ===== API =====
-function api(url,method="GET",body){
-  return fetch(url,{
-    method,
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":token
-    },
-    body: body?JSON.stringify(body):undefined
-  }).then(r=>r.json())
-}
-
-// ===== TROCAR TELA =====
-function mostrar(t){
-  dash.style.display="none"
-  estoque.style.display="none"
-  os.style.display="none"
-  clientes.style.display="none"
-
-  document.getElementById(t).style.display="block"
-}
-
-// ===== FORMATAÇÃO REAL =====
-function dinheiro(v){
-  return "R$ " + Number(v || 0).toFixed(2)
-}
-
-// ===== DASHBOARD CORRIGIDO =====
-async function carregarDashboard(){
-
-  let totalVendas = 0
-  let totalDespesas = 0
-
+function auth(req,res,next){
+  const token = req.headers.authorization
+  if(!token) return res.status(401).json({erro:"Sem token"})
   try{
-    const vendas = await api("/vendas") || []
-    vendas.forEach(v=>{
-      totalVendas += Number(v.valor) || 0
-    })
-  }catch{}
-
-  try{
-    const despesas = await api("/despesas") || []
-    despesas.forEach(d=>{
-      totalDespesas += Number(d.valor) || 0
-    })
-  }catch{}
-
-  const lucro = totalVendas - totalDespesas
-
-  document.getElementById("totalVendas").innerText = dinheiro(totalVendas)
-  document.getElementById("totalDespesas").innerText = dinheiro(totalDespesas)
-  document.getElementById("lucro").innerText = dinheiro(lucro)
+    req.user = jwt.verify(token,"segredo")
+    next()
+  }catch{
+    res.status(401).json({erro:"Token inválido"})
+  }
 }
 
-// ===== INIT =====
-carregarDashboard()
-</script>
-
-=======
-
-/* ===== MENU ===== */
-function show(id){
-  document.querySelectorAll(".section").forEach(s=>s.style.display="none");
-  document.getElementById(id).style.display="block";
-}
-show("dashboard");
-
-/* ===== OS ===== */
-async function addOS(){
-  await fetch("/os",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      cliente:cliente.value,
-      telefone:telefone.value,
-      aparelho:aparelho.value,
-      defeito:defeito.value,
-      valor:Number(valor.value),
-      garantia:garantia.value,
-      status:status.value
-    })
-  });
-  carregarOS();
+function allow(roles){
+  return (req,res,next)=>{
+    if(!roles.includes(req.user.role)) return res.status(403).json({erro:"Sem permissão"})
+    next()
+  }
 }
 
-async function carregarOS(){
-  const res = await fetch("/os");
-  const dados = await res.json();
-  listaOS.innerHTML="";
-  dados.forEach(o=>{
-    listaOS.innerHTML+=`
-      <div class="card">
-        ${o.cliente} - ${o.aparelho}<br>
-        R$ ${o.valor}<br>
-        <a href="/os/${o._id}/pdf" target="_blank">📄 PDF</a>
-      </div>`;
-  });
-}
-carregarOS();
+// ===== LOGIN =====
 
-/* ===== ESTOQUE ===== */
-async function addEstoque(){
-  await fetch("/estoque",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      produto:produto.value,
-      quantidade:Number(quantidade.value),
-      preco:Number(preco.value)
-    })
-  });
-  carregarEstoque();
-}
+app.post("/login", async(req,res)=>{
+  const u = await Usuario.findOne({usuario:req.body.usuario})
+  if(!u) return res.status(401).json({erro:"Erro"})
 
-async function carregarEstoque(){
-  const res = await fetch("/estoque");
-  const dados = await res.json();
-  listaEstoque.innerHTML="";
-  dados.forEach(p=>{
-    listaEstoque.innerHTML+=`
-      <div class="card">
-        ${p.produto}<br>
-        Qtd: ${p.quantidade}<br>
-        R$ ${p.preco}
-      </div>`;
-  });
-}
-carregarEstoque();
+  const ok = await bcrypt.compare(req.body.senha,u.senha)
+  if(!ok) return res.status(401).json({erro:"Erro"})
 
-/* ===== VENDAS ===== */
-async function addVenda(){
-  await fetch("/venda",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      produto:vProduto.value,
-      quantidade:Number(vQuantidade.value)
-    })
-  });
-  carregarVendas();
-  carregarEstoque();
-}
+  const token = jwt.sign({
+    id:u._id,
+    storeId:u.storeId,
+    role:u.role
+  },"segredo")
 
-async function carregarVendas(){
-  const res = await fetch("/vendas");
-  const dados = await res.json();
-  listaVendas.innerHTML="";
-  dados.forEach(v=>{
-    listaVendas.innerHTML+=`
-      <div class="card">
-        ${v.produto}<br>
-        Qtd: ${v.quantidade}<br>
-        R$ ${v.valor}
-      </div>`;
-  });
-}
-carregarVendas();
+  res.json({token})
+})
 
-/* ===== DESPESAS ===== */
-async function addDespesa(){
-  await fetch("/despesa",{
-    method:"POST",
-    headers:{ "Content-Type":"application/json"},
-    body:JSON.stringify({
-      descricao:dDescricao.value,
-      valor:Number(dValor.value)
-    })
-  });
-  carregarDespesas();
-}
+// ===== USUÁRIOS =====
 
-async function carregarDespesas(){
-  const res = await fetch("/despesas");
-  const dados = await res.json();
-  listaDespesas.innerHTML="";
-  dados.forEach(d=>{
-    listaDespesas.innerHTML+=`
-      <div class="card">
-        ${d.descricao}<br>
-        R$ ${d.valor}
-      </div>`;
-  });
-}
-carregarDespesas();
+app.post("/usuarios", auth, allow(["admin"]), async(req,res)=>{
+  const hash = await bcrypt.hash(req.body.senha,10)
+  res.json(await Usuario.create({
+    usuario:req.body.usuario,
+    senha:hash,
+    role:req.body.role,
+    storeId:req.user.storeId
+  }))
+})
 
-/* ===== DASHBOARD ===== */
-async function carregarDashboard(){
-  const vendas = await fetch("/vendas").then(r=>r.json());
-  const despesas = await fetch("/despesas").then(r=>r.json());
+// ===== CLIENTES =====
 
-  const totalVendas = vendas.reduce((a,b)=>a+b.valor,0);
-  const totalDespesas = despesas.reduce((a,b)=>a+b.valor,0);
-  const lucro = totalVendas - totalDespesas;
+app.post("/clientes", auth, async(req,res)=>{
+  res.json(await Cliente.create({...req.body,storeId:req.user.storeId}))
+})
 
-  resumo.innerHTML = `
-    Total Vendas: R$ ${totalVendas}<br>
-    Total Despesas: R$ ${totalDespesas}<br>
-    <b>Lucro Líquido: R$ ${lucro}</b>
-  `;
-}
-carregarDashboard();
+app.get("/clientes", auth, async(req,res)=>{
+  res.json(await Cliente.find({storeId:req.user.storeId}))
+})
 
-</script>
->>>>>>> faa33035cbd2cce85d6828b0dfb63612b7dde263
-</body>
-</html>
+app.get("/clientes/busca", auth, async(req,res)=>{
+  const q = req.query.q || ""
+  res.json(await Cliente.find({
+    storeId:req.user.storeId,
+    nome:{$regex:q,$options:"i"}
+  }))
+})
+
+app.get("/cliente/:id/os", auth, async(req,res)=>{
+  res.json(await OS.find({
+    clienteId:req.params.id,
+    storeId:req.user.storeId
+  }).sort({numero:-1}))
+})
+
+// ===== ESTOQUE =====
+
+app.get("/estoque", auth, async(req,res)=>{
+  res.json(await Estoque.find({storeId:req.user.storeId}))
+})
+
+app.post("/estoque", auth, async(req,res)=>{
+  res.json(await Estoque.create({
+    ...req.body,
+    quantidade:Number(req.body.quantidade)||0,
+    precoCusto:Number(req.body.precoCusto)||0,
+    precoVenda:Number(req.body.precoVenda)||0,
+    storeId:req.user.storeId
+  }))
+})
+
+// ===== OS =====
+
+app.post("/os", auth, async(req,res)=>{
+  const ultima = await OS.findOne({storeId:req.user.storeId}).sort({numero:-1})
+  const numero = ultima ? ultima.numero+1 : 1
+
+  res.json(await OS.create({
+    ...req.body,
+    numero,
+    valor:Number(req.body.valor)||0,
+    storeId:req.user.storeId
+  }))
+})
+
+app.get("/os", auth, async(req,res)=>{
+  res.json(await OS.find({storeId:req.user.storeId}))
+})
+
+// ===== DASHBOARD =====
+
+app.get("/dashboard", auth, async(req,res)=>{
+  const estoque = await Estoque.find({storeId:req.user.storeId})
+
+  const custo = estoque.reduce((t,i)=>t+(i.quantidade*i.precoCusto),0)
+  const venda = estoque.reduce((t,i)=>t+(i.quantidade*i.precoVenda),0)
+
+  res.json({custo,venda,lucro:venda-custo})
+})
+
+// ===== GRAFICO MENSAL =====
+
+app.get("/dashboard/mensal", auth, async(req,res)=>{
+  const vendas = await Venda.find({storeId:req.user.storeId})
+  const map={}
+
+  vendas.forEach(v=>{
+    const d=new Date(v.data)
+    const chave=`${d.getFullYear()}-${d.getMonth()+1}`
+    map[chave]=(map[chave]||0)+(v.valor||0)
+  })
+
+  res.json({
+    labels:Object.keys(map),
+    valores:Object.values(map)
+  })
+})
+
+// ===== PDF + QR =====
+
+app.get("/os/:id/pdf", auth, async(req,res)=>{
+  const os = await OS.findById(req.params.id)
+  const doc = new PDFDocument()
+
+  res.setHeader("Content-Type","application/pdf")
+  doc.pipe(res)
+
+  const qr = await QRCode.toDataURL("OS "+os.numero)
+
+  doc.text("ORDEM DE SERVIÇO")
+  doc.text("Nº "+os.numero)
+  doc.text("Cliente: "+os.cliente)
+  doc.text("Serviço: "+os.servico)
+  doc.text("Valor: R$ "+os.valor)
+
+  doc.image(qr,{width:80})
+
+  doc.end()
+})
+
+// ===== IMPRESSÃO TÉRMICA =====
+
+app.get("/os/:id/print", auth, async(req,res)=>{
+  const os = await OS.findById(req.params.id)
+
+  res.send(`
+  <body style="width:58mm;font-family:monospace">
+  <h3>HS CELL</h3>
+  OS ${os.numero}<br>
+  ${os.cliente}<br>
+  ${os.servico}<br>
+  R$ ${os.valor}
+  <script>window.print()</script>
+  </body>
+  `)
+})
+
+// ===== BACKUP =====
+
+app.get("/backup", auth, allow(["admin"]), async(req,res)=>{
+  const storeId = req.user.storeId
+
+  const data = {
+    clientes: await Cliente.find({storeId}),
+    estoque: await Estoque.find({storeId}),
+    os: await OS.find({storeId}),
+    vendas: await Venda.find({storeId}),
+    despesas: await Despesa.find({storeId})
+  }
+
+  res.json(data)
+})
+
+// ===== START =====
+
+app.listen(process.env.PORT||3000,()=>console.log("Rodando 🚀"))
