@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>HS Cell</title>
+
+<style>
+body{margin:0;font-family:Arial;background:#f1f5f9;display:flex}
+.sidebar{width:240px;background:#0f172a;color:#fff;height:100vh;padding:20px}
+.sidebar button{width:100%;padding:12px;margin-bottom:10px;background:#1e293b;border:none;color:#fff;border-radius:8px}
+.main{flex:1;padding:20px}
+.card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
+.cards{display:flex;gap:10px}
+.card-big{flex:1;text-align:center;font-size:18px}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<h2>HS Cell</h2>
+<button onclick="mostrar('dash')">Dashboard</button>
+<button onclick="mostrar('estoque')">Estoque</button>
+<button onclick="mostrar('os')">Ordens</button>
+<button onclick="mostrar('clientes')">Clientes</button>
+</div>
+
+<div class="main">
+
+<div id="dash">
+<h2>Resumo</h2>
+
+<div class="cards">
+<div class="card card-big" id="totalVendas">R$ 0</div>
+<div class="card card-big" id="totalDespesas">R$ 0</div>
+<div class="card card-big" id="lucro">R$ 0</div>
+</div>
+</div>
+
+<div id="estoque" style="display:none"></div>
+<div id="os" style="display:none"></div>
+<div id="clientes" style="display:none"></div>
+
+</div>
+
+<script>
+let token=""
+
+// ===== API =====
+function api(url,method="GET",body){
+  return fetch(url,{
+    method,
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":token
+    },
+    body: body?JSON.stringify(body):undefined
+  }).then(r=>r.json())
+}
+
+// ===== TROCAR TELA =====
+function mostrar(t){
+  dash.style.display="none"
+  estoque.style.display="none"
+  os.style.display="none"
+  clientes.style.display="none"
+
+  document.getElementById(t).style.display="block"
+}
+
+// ===== FORMATAÇÃO REAL =====
+function dinheiro(v){
+  return "R$ " + Number(v || 0).toFixed(2)
+}
+
+// ===== DASHBOARD CORRIGIDO =====
+async function carregarDashboard(){
+
+  let totalVendas = 0
+  let totalDespesas = 0
+
+  try{
+    const vendas = await api("/vendas") || []
+    vendas.forEach(v=>{
+      totalVendas += Number(v.valor) || 0
+    })
+  }catch{}
+
+  try{
+    const despesas = await api("/despesas") || []
+    despesas.forEach(d=>{
+      totalDespesas += Number(d.valor) || 0
+    })
+  }catch{}
+
+  const lucro = totalVendas - totalDespesas
+
+  document.getElementById("totalVendas").innerText = dinheiro(totalVendas)
+  document.getElementById("totalDespesas").innerText = dinheiro(totalDespesas)
+  document.getElementById("lucro").innerText = dinheiro(lucro)
+}
+
+// ===== INIT =====
+carregarDashboard()
+</script>
+
+</body>
+</html>
