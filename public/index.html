@@ -2,23 +2,125 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<title>HS Cell Sistema</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  margin:0;
+}
+
+.menu{
+  display:flex;
+  background:#020617;
+  padding:10px;
+  gap:10px;
+}
+
+.menu button{
+  background:#1e293b;
+  border:none;
+  color:white;
+  padding:10px;
+  cursor:pointer;
+}
+
+.tela{
+  display:none;
+  padding:20px;
+}
+
+.ativa{
+  display:block;
+}
+
+.card{
+  background:#1e293b;
+  padding:10px;
+  margin:10px 0;
+}
+</style>
 </head>
 
 <body>
 
-<h2>Dashboard</h2>
-<canvas id="grafico"></canvas>
+<div class="menu">
+  <button onclick="mostrar('dashboard')">📊 Dashboard</button>
+  <button onclick="mostrar('clientes')">👥 Clientes</button>
+  <button onclick="mostrar('estoque')">📦 Estoque</button>
+  <button onclick="mostrar('os')">🧾 OS</button>
+  <button onclick="window.open('/backup')">☁️ Backup</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="tela ativa">
+  <h2>Dashboard</h2>
+  <canvas id="grafico"></canvas>
+</div>
+
+<!-- CLIENTES -->
+<div id="clientes" class="tela">
+  <h2>Clientes</h2>
+  <input id="nomeCliente" placeholder="Nome">
+  <button onclick="addCliente()">Adicionar</button>
+
+  <input id="busca" placeholder="Buscar">
+  <button onclick="buscar()">Buscar</button>
+
+  <div id="listaClientes"></div>
+</div>
+
+<!-- ESTOQUE -->
+<div id="estoque" class="tela">
+  <h2>Estoque</h2>
+  <input id="produto" placeholder="Produto">
+  <input id="quantidade" placeholder="Qtd">
+  <input id="custo" placeholder="Custo">
+  <input id="venda" placeholder="Venda">
+  <button onclick="addEstoque()">Adicionar</button>
+
+  <div id="listaEstoque"></div>
+</div>
+
+<!-- OS -->
+<div id="os" class="tela">
+  <h2>Ordem de Serviço</h2>
+  <input id="clienteOS" placeholder="Cliente">
+  <input id="servicoOS" placeholder="Serviço">
+  <input id="valorOS" placeholder="Valor">
+  <button onclick="addOS()">Criar</button>
+
+  <div id="listaOS"></div>
+</div>
 
 <script>
 let token=""
 
-async function api(url){
- return fetch(url,{headers:{Authorization:token}}).then(r=>r.json())
+// ===== API =====
+async function api(url,method="GET",body){
+ return fetch(url,{
+  method,
+  headers:{
+   "Content-Type":"application/json",
+   "Authorization":token
+  },
+  body: body?JSON.stringify(body):undefined
+ }).then(r=>r.json())
 }
 
+// ===== MENU =====
+function mostrar(id){
+ document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"))
+ document.getElementById(id).classList.add("ativa")
+}
+
+// ===== DASHBOARD =====
 async function grafico(){
- const d=await api("/dashboard/mensal")
+ const d = await api("/dashboard/mensal")
 
  new Chart(document.getElementById("grafico"),{
   type:"line",
@@ -29,7 +131,81 @@ async function grafico(){
  })
 }
 
+// ===== CLIENTES =====
+async function addCliente(){
+ await api("/clientes","POST",{nome:nomeCliente.value})
+ carregarClientes()
+}
+
+async function carregarClientes(){
+ const res = await api("/clientes")
+ listaClientes.innerHTML=""
+ res.forEach(c=>{
+  listaClientes.innerHTML += `<div class="card">${c.nome}</div>`
+ })
+}
+
+async function buscar(){
+ const res = await api("/clientes/busca?q="+busca.value)
+ listaClientes.innerHTML=""
+ res.forEach(c=>{
+  listaClientes.innerHTML += `<div class="card">${c.nome}</div>`
+ })
+}
+
+// ===== ESTOQUE =====
+async function addEstoque(){
+ await api("/estoque","POST",{
+  produto:produto.value,
+  quantidade:quantidade.value,
+  precoCusto:custo.value,
+  precoVenda:venda.value
+ })
+ carregarEstoque()
+}
+
+async function carregarEstoque(){
+ const res = await api("/estoque")
+ listaEstoque.innerHTML=""
+ res.forEach(i=>{
+  listaEstoque.innerHTML += `
+  <div class="card">
+    ${i.produto} - Qtd: ${i.quantidade}
+  </div>`
+ })
+}
+
+// ===== OS =====
+async function addOS(){
+ await api("/os","POST",{
+  cliente:clienteOS.value,
+  servico:servicoOS.value,
+  valor:valorOS.value
+ })
+ carregarOS()
+}
+
+async function carregarOS(){
+ const res = await api("/os")
+ listaOS.innerHTML=""
+ res.forEach(o=>{
+  listaOS.innerHTML += `
+  <div class="card">
+    OS ${o.numero} - ${o.cliente}
+    <br>
+    R$ ${o.valor}
+    <br>
+    <button onclick="window.open('/os/${o._id}/print')">🖨️</button>
+    <button onclick="window.open('/os/${o._id}/pdf')">PDF</button>
+  </div>`
+ })
+}
+
+// ===== INIT =====
 grafico()
+carregarClientes()
+carregarEstoque()
+carregarOS()
 </script>
 
 </body>
