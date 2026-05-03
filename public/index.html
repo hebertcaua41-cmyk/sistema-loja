@@ -2,102 +2,139 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>HS Cell Sistema</title>
+<title>HS Cell App</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
+  margin:0;
   font-family:Arial;
   background:#0f172a;
   color:white;
-  margin:0;
 }
 
-.menu{
-  display:flex;
-  background:#020617;
-  padding:10px;
-  gap:10px;
+.header{
+  padding:15px;
+  font-size:18px;
+  font-weight:bold;
 }
 
-.menu button{
-  background:#1e293b;
-  border:none;
-  color:white;
-  padding:10px;
-  cursor:pointer;
-}
-
-.tela{
-  display:none;
-  padding:20px;
-}
-
-.ativa{
-  display:block;
+.container{
+  padding:15px;
+  padding-bottom:80px;
 }
 
 .card{
   background:#1e293b;
-  padding:10px;
-  margin:10px 0;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:10px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
 }
+
+input{
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border:none;
+  border-radius:8px;
+  background:#020617;
+  color:white;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#3b82f6;
+  color:white;
+  margin-top:5px;
+}
+
+.nav{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  display:flex;
+  background:#020617;
+}
+
+.nav button{
+  flex:1;
+  background:none;
+  color:white;
+  border:none;
+  padding:10px;
+}
+
+.tela{ display:none; }
+.ativa{ display:block; }
+
 </style>
 </head>
 
 <body>
 
-<div class="menu">
-  <button onclick="mostrar('dashboard')">📊 Dashboard</button>
-  <button onclick="mostrar('clientes')">👥 Clientes</button>
-  <button onclick="mostrar('estoque')">📦 Estoque</button>
-  <button onclick="mostrar('os')">🧾 OS</button>
-  <button onclick="window.open('/backup')">☁️ Backup</button>
-</div>
+<div class="header">📱 HS Cell</div>
+
+<div class="container">
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="tela ativa">
-  <h2>Dashboard</h2>
-  <canvas id="grafico"></canvas>
+  <div class="card">
+    <canvas id="grafico"></canvas>
+  </div>
 </div>
 
 <!-- CLIENTES -->
 <div id="clientes" class="tela">
-  <h2>Clientes</h2>
-  <input id="nomeCliente" placeholder="Nome">
-  <button onclick="addCliente()">Adicionar</button>
-
-  <input id="busca" placeholder="Buscar">
-  <button onclick="buscar()">Buscar</button>
+  <div class="card">
+    <input id="nomeCliente" placeholder="Nome cliente">
+    <button onclick="addCliente()">Salvar</button>
+  </div>
 
   <div id="listaClientes"></div>
 </div>
 
 <!-- ESTOQUE -->
 <div id="estoque" class="tela">
-  <h2>Estoque</h2>
-  <input id="produto" placeholder="Produto">
-  <input id="quantidade" placeholder="Qtd">
-  <input id="custo" placeholder="Custo">
-  <input id="venda" placeholder="Venda">
-  <button onclick="addEstoque()">Adicionar</button>
+  <div class="card">
+    <input id="produto" placeholder="Produto">
+    <input id="quantidade" placeholder="Qtd">
+    <input id="custo" placeholder="Custo">
+    <input id="venda" placeholder="Venda">
+    <button onclick="addEstoque()">Salvar</button>
+  </div>
 
   <div id="listaEstoque"></div>
 </div>
 
 <!-- OS -->
 <div id="os" class="tela">
-  <h2>Ordem de Serviço</h2>
-  <input id="clienteOS" placeholder="Cliente">
-  <input id="servicoOS" placeholder="Serviço">
-  <input id="valorOS" placeholder="Valor">
-  <button onclick="addOS()">Criar</button>
+  <div class="card">
+    <input id="clienteOS" placeholder="Cliente">
+    <input id="servicoOS" placeholder="Serviço">
+    <input id="valorOS" placeholder="Valor">
+    <button onclick="addOS()">Criar OS</button>
+  </div>
 
   <div id="listaOS"></div>
 </div>
 
+</div>
+
+<!-- MENU APP -->
+<div class="nav">
+  <button onclick="mostrar('dashboard')">🏠</button>
+  <button onclick="mostrar('clientes')">👤</button>
+  <button onclick="mostrar('estoque')">📦</button>
+  <button onclick="mostrar('os')">🧾</button>
+</div>
+
 <script>
+
 let token=""
 
 // ===== API =====
@@ -112,7 +149,7 @@ async function api(url,method="GET",body){
  }).then(r=>r.json())
 }
 
-// ===== MENU =====
+// ===== NAVEGAÇÃO =====
 function mostrar(id){
  document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"))
  document.getElementById(id).classList.add("ativa")
@@ -126,7 +163,10 @@ async function grafico(){
   type:"line",
   data:{
    labels:d.labels,
-   datasets:[{label:"Vendas",data:d.valores}]
+   datasets:[{
+     label:"Vendas",
+     data:d.valores
+   }]
   }
  })
 }
@@ -139,14 +179,6 @@ async function addCliente(){
 
 async function carregarClientes(){
  const res = await api("/clientes")
- listaClientes.innerHTML=""
- res.forEach(c=>{
-  listaClientes.innerHTML += `<div class="card">${c.nome}</div>`
- })
-}
-
-async function buscar(){
- const res = await api("/clientes/busca?q="+busca.value)
  listaClientes.innerHTML=""
  res.forEach(c=>{
   listaClientes.innerHTML += `<div class="card">${c.nome}</div>`
@@ -170,7 +202,8 @@ async function carregarEstoque(){
  res.forEach(i=>{
   listaEstoque.innerHTML += `
   <div class="card">
-    ${i.produto} - Qtd: ${i.quantidade}
+    ${i.produto} <br>
+    Qtd: ${i.quantidade}
   </div>`
  })
 }
@@ -191,10 +224,10 @@ async function carregarOS(){
  res.forEach(o=>{
   listaOS.innerHTML += `
   <div class="card">
-    OS ${o.numero} - ${o.cliente}
-    <br>
+    OS ${o.numero}<br>
+    ${o.cliente}<br>
     R$ ${o.valor}
-    <br>
+    <br><br>
     <button onclick="window.open('/os/${o._id}/print')">🖨️</button>
     <button onclick="window.open('/os/${o._id}/pdf')">PDF</button>
   </div>`
@@ -206,6 +239,7 @@ grafico()
 carregarClientes()
 carregarEstoque()
 carregarOS()
+
 </script>
 
 </body>
