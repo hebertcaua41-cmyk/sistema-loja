@@ -22,6 +22,12 @@ const Usuario = mongoose.model("Usuario",{
   storeId:String
 })
 
+const Assinatura = mongoose.model("Assinatura",{
+  storeId:String,
+  status:{type:String, default:"ativo"},
+  vencimento:Date
+})
+
 const Cliente = mongoose.model("Cliente",{nome:String,telefone:String,storeId:String})
 
 const Estoque = mongoose.model("Estoque",{
@@ -59,6 +65,17 @@ function auth(req,res,next){
   }
 }
 
+async function checkAssinatura(req,res,next){
+  const a = await Assinatura.findOne({storeId:req.user.storeId})
+  if(!a || a.status !== "ativo"){
+    return res.status(403).json({erro:"Sistema bloqueado"})
+  }
+  if(new Date() > new Date(a.vencimento)){
+    return res.status(403).json({erro:"Assinatura vencida"})
+  }
+  next()
+}
+
 function allow(r){
   return (req,res,next)=>{
     if(!r.includes(req.user.role)) return res.status(403).json({erro:"Sem permissão"})
@@ -83,21 +100,33 @@ app.post("/login", async(req,res)=>{
   res.json({token})
 })
 
+// ===== USUARIOS =====
+app.post("/usuarios", auth, allow(["admin"]), async(req,res)=>{
+  const hash = await bcrypt.hash(req.body.senha,10)
+  res.json(await Usuario.create({
+    usuario:req.body.usuario,
+    senha:hash,
+    role:req.body.role,
+    storeId:req.user.storeId
+  }))
+})
+
+app.get("/usuarios", auth, async(req,res)=>{
+  res.json(await Usuario.find({storeId:req.user.storeId}))
+})
+
+app.delete("/usuarios/:id", auth, async(req,res)=>{
+  await Usuario.findByIdAndDelete(req.params.id)
+  res.json({ok:true})
+})
+
 // ===== CLIENTES =====
-app.post("/clientes", auth, async(req,res)=>{
+app.post("/clientes", auth, checkAssinatura, async(req,res)=>{
   res.json(await Cliente.create({...req.body,storeId:req.user.storeId}))
 })
 
-app.get("/clientes", auth, async(req,res)=>{
+app.get("/clientes", auth, checkAssinatura, async(req,res)=>{
   res.json(await Cliente.find({storeId:req.user.storeId}))
-})
-
-app.get("/clientes/busca", auth, async(req,res)=>{
-  const q = req.query.q || ""
-  res.json(await Cliente.find({
-    storeId:req.user.storeId,
-    nome:{$regex:q,$options:"i"}
-  }))
 })
 
 // ===== ESTOQUE =====
@@ -142,66 +171,65 @@ app.get("/dashboard", auth, async(req,res)=>{
   res.json({custo,venda,lucro:venda-custo})
 })
 
-// ===== GRAFICO =====
-app.get("/dashboard/mensal", auth, async(req,res)=>{
+// ===== FINANCEIRO =====
+app.get("/financeiro", auth, async(req,res)=>{
   const vendas = await Venda.find({storeId:req.user.storeId})
-  const map={}
+  const despesas = await Despesa.find({storeId:req.user.storeId})
+  const estoque = await Estoque.find({storeId:req.user.storeId})
 
-  vendas.forEach(v=>{
-    const d=new Date(v.data)
-    const k=d.getMonth()+1
-    map[k]=(map[k]||0)+(v.valor||0)
+  const totalVendas = vendas.reduce((t,v)=>t+(v.valor||0),0)
+  const totalDespesas = despesas.reduce((t,d)=>t+(d.valor||0),0)
+  const custoEstoque = estoque.reduce((t,i)=>t+(i.quantidade*i.precoCusto),0)
+
+  res.json({
+    vendas:totalVendas,
+    despesas:totalDespesas,
+    custoEstoque,
+    lucroLiquido: totalVendas - totalDespesas
   })
-
-  res.json({labels:Object.keys(map),valores:Object.values(map)})
 })
 
-// ===== PDF + QR =====
+// ===== PDF =====
 app.get("/os/:id/pdf", auth, async(req,res)=>{
   const os = await OS.findById(req.params.id)
   const doc = new PDFDocument()
-
   res.setHeader("Content-Type","application/pdf")
   doc.pipe(res)
 
   const qr = await QRCode.toDataURL("OS "+os.numero)
 
-  doc.fontSize(16).text("HS CELL")
-  doc.text("OS Nº "+os.numero)
-  doc.text("Cliente: "+os.cliente)
-  doc.text("Serviço: "+os.servico)
-  doc.text("Valor: R$ "+os.valor)
+  doc.text("HS CELL")
+  doc.text("OS "+os.numero)
+  doc.text(os.cliente)
+  doc.text(os.servico)
+  doc.text("R$ "+os.valor)
 
   doc.image(qr,{width:80})
   doc.end()
 })
 
-// ===== IMPRESSÃO TÉRMICA TOP =====
+// ===== PRINT =====
 app.get("/os/:id/print", auth, async(req,res)=>{
   const os = await OS.findById(req.params.id)
 
   res.send(`
-  <html>
   <body style="width:58mm;font-family:monospace;text-align:center">
-    <h3>HS CELL IMPORTS</h3>
-    <hr>
-    <p>OS Nº ${os.numero}</p>
-    <p>${os.cliente}</p>
-    <p>${os.servico}</p>
-    <p><b>R$ ${Number(os.valor).toFixed(2)}</b></p>
-    <hr>
-    <p>Garantia: ${os.garantia || "90 dias"}</p>
-    <p>Obrigado pela preferência</p>
-    <script>window.print()</script>
+  <h3>HS CELL</h3>
+  <hr>
+  OS ${os.numero}<br>
+  ${os.cliente}<br>
+  ${os.servico}<br>
+  <b>R$ ${os.valor}</b>
+  <hr>
+  Garantia: ${os.garantia||"90 dias"}
+  <script>window.print()</script>
   </body>
-  </html>
   `)
 })
 
 // ===== BACKUP =====
 app.get("/backup", auth, async(req,res)=>{
   const storeId=req.user.storeId
-
   res.json({
     clientes:await Cliente.find({storeId}),
     estoque:await Estoque.find({storeId}),
@@ -209,5 +237,4 @@ app.get("/backup", auth, async(req,res)=>{
   })
 })
 
-// ===== START =====
 app.listen(process.env.PORT||3000)

@@ -2,142 +2,47 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>HS Cell App</title>
-
+<title>HS Cell</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
-body{
-  margin:0;
-  font-family:Arial;
-  background:#0f172a;
-  color:white;
-}
-
-.header{
-  padding:15px;
-  font-size:18px;
-  font-weight:bold;
-}
-
-.container{
-  padding:15px;
-  padding-bottom:80px;
-}
-
-.card{
-  background:#1e293b;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:10px;
-  box-shadow:0 4px 10px rgba(0,0,0,0.3);
-}
-
-input{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  border:none;
-  border-radius:8px;
-  background:#020617;
-  color:white;
-}
-
-button{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:#3b82f6;
-  color:white;
-  margin-top:5px;
-}
-
-.nav{
-  position:fixed;
-  bottom:0;
-  width:100%;
-  display:flex;
-  background:#020617;
-}
-
-.nav button{
-  flex:1;
-  background:none;
-  color:white;
-  border:none;
-  padding:10px;
-}
-
-.tela{ display:none; }
-.ativa{ display:block; }
-
+body{margin:0;background:#0f172a;color:white;font-family:Arial}
+.container{padding:15px}
+.card{background:#1e293b;padding:15px;margin-bottom:10px;border-radius:10px}
+button{padding:10px;width:100%;margin-top:5px;background:#3b82f6;color:white;border:none}
+input{width:100%;padding:10px;margin:5px 0;background:#020617;color:white;border:none}
 </style>
 </head>
 
 <body>
 
-<div class="header">📱 HS Cell</div>
-
-<div class="container">
-
-<!-- DASHBOARD -->
-<div id="dashboard" class="tela ativa">
-  <div class="card">
-    <canvas id="grafico"></canvas>
-  </div>
+<div id="login">
+<h2>Login</h2>
+<input id="user">
+<input id="pass" type="password">
+<button onclick="login()">Entrar</button>
 </div>
 
-<!-- CLIENTES -->
-<div id="clientes" class="tela">
-  <div class="card">
-    <input id="nomeCliente" placeholder="Nome cliente">
-    <button onclick="addCliente()">Salvar</button>
-  </div>
+<div id="app" style="display:none" class="container">
 
-  <div id="listaClientes"></div>
+<div class="card">
+<h3>Financeiro</h3>
+<p>Vendas: <span id="v"></span></p>
+<p>Despesas: <span id="d"></span></p>
+<p>Lucro: <span id="l"></span></p>
 </div>
 
-<!-- ESTOQUE -->
-<div id="estoque" class="tela">
-  <div class="card">
-    <input id="produto" placeholder="Produto">
-    <input id="quantidade" placeholder="Qtd">
-    <input id="custo" placeholder="Custo">
-    <input id="venda" placeholder="Venda">
-    <button onclick="addEstoque()">Salvar</button>
-  </div>
-
-  <div id="listaEstoque"></div>
+<div class="card">
+<h3>Usuários</h3>
+<input id="nu"><input id="ns">
+<button onclick="criarUser()">Criar</button>
+<div id="lu"></div>
 </div>
 
-<!-- OS -->
-<div id="os" class="tela">
-  <div class="card">
-    <input id="clienteOS" placeholder="Cliente">
-    <input id="servicoOS" placeholder="Serviço">
-    <input id="valorOS" placeholder="Valor">
-    <button onclick="addOS()">Criar OS</button>
-  </div>
-
-  <div id="listaOS"></div>
-</div>
-
-</div>
-
-<!-- MENU APP -->
-<div class="nav">
-  <button onclick="mostrar('dashboard')">🏠</button>
-  <button onclick="mostrar('clientes')">👤</button>
-  <button onclick="mostrar('estoque')">📦</button>
-  <button onclick="mostrar('os')">🧾</button>
 </div>
 
 <script>
-
 let token=""
 
-// ===== API =====
 async function api(url,method="GET",body){
  return fetch(url,{
   method,
@@ -149,97 +54,37 @@ async function api(url,method="GET",body){
  }).then(r=>r.json())
 }
 
-// ===== NAVEGAÇÃO =====
-function mostrar(id){
- document.querySelectorAll(".tela").forEach(t=>t.classList.remove("ativa"))
- document.getElementById(id).classList.add("ativa")
+async function login(){
+ const r = await fetch("/login",{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({usuario:user.value,senha:pass.value})
+ }).then(r=>r.json())
+
+ token=r.token
+ document.getElementById("login").style.display="none"
+ document.getElementById("app").style.display="block"
+
+ carregar()
 }
 
-// ===== DASHBOARD =====
-async function grafico(){
- const d = await api("/dashboard/mensal")
+async function carregar(){
+ const f = await api("/financeiro")
+ v.innerText=f.vendas
+ d.innerText=f.despesas
+ l.innerText=f.lucroLiquido
 
- new Chart(document.getElementById("grafico"),{
-  type:"line",
-  data:{
-   labels:d.labels,
-   datasets:[{
-     label:"Vendas",
-     data:d.valores
-   }]
-  }
+ const u = await api("/usuarios")
+ lu.innerHTML=""
+ u.forEach(x=>{
+  lu.innerHTML+=`<div>${x.usuario}</div>`
  })
 }
 
-// ===== CLIENTES =====
-async function addCliente(){
- await api("/clientes","POST",{nome:nomeCliente.value})
- carregarClientes()
+async function criarUser(){
+ await api("/usuarios","POST",{usuario:nu.value,senha:ns.value})
+ carregar()
 }
-
-async function carregarClientes(){
- const res = await api("/clientes")
- listaClientes.innerHTML=""
- res.forEach(c=>{
-  listaClientes.innerHTML += `<div class="card">${c.nome}</div>`
- })
-}
-
-// ===== ESTOQUE =====
-async function addEstoque(){
- await api("/estoque","POST",{
-  produto:produto.value,
-  quantidade:quantidade.value,
-  precoCusto:custo.value,
-  precoVenda:venda.value
- })
- carregarEstoque()
-}
-
-async function carregarEstoque(){
- const res = await api("/estoque")
- listaEstoque.innerHTML=""
- res.forEach(i=>{
-  listaEstoque.innerHTML += `
-  <div class="card">
-    ${i.produto} <br>
-    Qtd: ${i.quantidade}
-  </div>`
- })
-}
-
-// ===== OS =====
-async function addOS(){
- await api("/os","POST",{
-  cliente:clienteOS.value,
-  servico:servicoOS.value,
-  valor:valorOS.value
- })
- carregarOS()
-}
-
-async function carregarOS(){
- const res = await api("/os")
- listaOS.innerHTML=""
- res.forEach(o=>{
-  listaOS.innerHTML += `
-  <div class="card">
-    OS ${o.numero}<br>
-    ${o.cliente}<br>
-    R$ ${o.valor}
-    <br><br>
-    <button onclick="window.open('/os/${o._id}/print')">🖨️</button>
-    <button onclick="window.open('/os/${o._id}/pdf')">PDF</button>
-  </div>`
- })
-}
-
-// ===== INIT =====
-grafico()
-carregarClientes()
-carregarEstoque()
-carregarOS()
-
 </script>
 
 </body>
